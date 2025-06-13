@@ -1,0 +1,407 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Fonte mais moderna */
+    margin: 0;
+    padding: 0;
+    background: #f0f2f5; /* Cor de fundo mais suave */
+    color: #333; /* Cor de texto padrão mais escura */
+}
+
+/* Header */
+header {
+    background: linear-gradient(to right, #ff7e5f, #feb47b); /* Gradiente para o header */
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem 2rem;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra sutil */
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    letter-spacing: 1px; /* Espaçamento entre letras */
+}
+
+/* Banner */
+.banner {
+    background: #fff3e6; /* Cor de fundo mais clara */
+    padding: 3rem 2rem; /* Mais padding para destaque */
+    text-align: center;
+    border-bottom: 1px solid #ffefe0; /* Borda inferior sutil */
+}
+
+.banner h2 {
+    font-size: 2rem;
+    color: #ff8c42; /* Cor do título mais vibrante */
+    margin-bottom: 1rem;
+}
+
+.banner p {
+    font-size: 1.1rem;
+    color: #666;
+    margin-bottom: 1.5rem;
+}
+
+.banner button {
+    background: #ff7e5f;
+    color: white;
+    border: none;
+    padding: 0.8rem 1.8rem; /* Padding maior para o botão */
+    font-size: 1.1rem;
+    cursor: pointer;
+    border-radius: 25px; /* Botão arredondado */
+    transition: background 0.3s ease, transform 0.2s ease; /* Transição suave */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Sombra para o botão */
+}
+
+.banner button:hover {
+    background: #feb47b; /* Mudar cor no hover */
+    transform: translateY(-2px); /* Efeito de "levantar" no hover */
+}
+
+
+/* Lista de Pets (Container) */
+.lista-pets {
+    padding: 2rem;
+    background-color: #f8f8f8; /* Fundo suave para a seção */
+}
+
+.lista-pets h2 {
+    text-align: center;
+    font-size: 2rem;
+    color: #ff8c42;
+    margin-bottom: 1.5rem;
+}
+
+.pets-container {
+    display: grid; /* Usar grid para melhor controle de layout */
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); /* Colunas responsivas */
+    gap: 1.5rem; /* Espaçamento entre os cards */
+    max-width: 1200px; /* Largura máxima para o container */
+    margin: 0 auto; /* Centralizar */
+}
+
+/* Card de Pet (individual) */
+.card-pet { /* Mudei de .pet-card para .card-pet para consistência com o JS */
+    background: white;
+    border-radius: 10px; /* Mais arredondado */
+    padding: 1.2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Sombra mais pronunciada */
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* Transições suaves */
+    overflow: hidden; /* Garante que nada saia do card */
+}
+
+.card-pet:hover {
+    transform: translateY(-5px); /* Efeito de "levantar" no hover */
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); /* Sombra maior no hover */
+}
+
+.card-pet img {
+    width: 100%;
+    height: 180px; /* Altura fixa para a imagem */
+    object-fit: cover; /* Recorta a imagem para cobrir o espaço */
+    border-radius: 8px; /* Borda arredondada para a imagem */
+    margin-bottom: 1rem;
+}
+
+.card-pet strong {
+    font-size: 1.3rem;
+    color: #ff8c42;
+    margin-bottom: 0.5rem;
+    display: block; /* Para o strong ocupar sua própria linha */
+}
+
+.card-pet br {
+    display: none; /* Remover quebras de linha indesejadas */
+}
+
+.card-pet p {
+    margin: 0.3rem 0;
+    font-size: 0.95rem;
+    color: #555;
+}
+
+
+/* MODAL GERAL */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); /* Fundo mais escuro para o modal */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000; /* Garante que o modal fique acima de tudo */
+    opacity: 0; /* Começa invisível */
+    visibility: hidden; /* Esconde completamente */
+    transition: opacity 0.3s ease, visibility 0.3s ease; /* Transição para aparecer/sumir */
+}
+
+.modal.active { /* Adicione uma classe 'active' com JS para mostrar o modal */
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background: white;
+    padding: 2.5rem; /* Mais padding */
+    border-radius: 12px; /* Mais arredondado */
+    width: 90%; /* Responsivo */
+    max-width: 400px; /* Largura máxima para o modal */
+    position: relative;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); /* Sombra mais forte */
+    transform: translateY(-20px); /* Começa um pouco acima */
+    transition: transform 0.3s ease, opacity 0.3s ease; /* Transição para entrada */
+}
+
+.modal.active .modal-content {
+    transform: translateY(0); /* Desliza para a posição final */
+    opacity: 1;
+}
+
+.close {
+    position: absolute;
+    right: 1.2rem;
+    top: 1.2rem;
+    cursor: pointer;
+    font-size: 1.6rem; /* Ícone de fechar maior */
+    color: #888;
+    transition: color 0.2s ease;
+}
+
+.close:hover {
+    color: #333;
+}
+
+.hidden {
+    display: none; /* Mantenha esta classe para ocultar com JS */
+}
+
+/* Títulos dentro do modal */
+.modal-content h2 {
+    font-size: 2rem;
+    color: #ff8c42;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    font-weight: 600; /* Mais negrito */
+}
+
+/* Formulários dentro do modal (Login e Cadastro de Pet) */
+.modal-content form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #555;
+    font-size: 0.95rem;
+}
+
+.modal-content form input[type="text"],
+.modal-content form input[type="email"],
+.modal-content form input[type="password"],
+.modal-content form input[type="number"] {
+    width: calc(100% - 20px); /* Ajusta para padding */
+    padding: 10px;
+    margin-bottom: 1.2rem; /* Mais espaço entre os campos */
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    box-sizing: border-box; /* Inclui padding e borda na largura total */
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.modal-content form input[type="text"]:focus,
+.modal-content form input[type="email"]:focus,
+.modal-content form input[type="password"]:focus,
+.modal-content form input[type="number"]:focus {
+    border-color: #ff7e5f; /* Borda destacada no foco */
+    box-shadow: 0 0 0 3px rgba(255, 126, 95, 0.2); /* Sombra suave no foco */
+    outline: none; /* Remove outline padrão do navegador */
+}
+
+.modal-content form button[type="submit"] {
+    width: 100%;
+    background: #ff7e5f;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    border-radius: 8px; /* Botão mais arredondado */
+    transition: background 0.3s ease, transform 0.2s ease;
+    margin-top: 1rem; /* Espaço acima do botão */
+}
+
+.modal-content form button[type="submit"]:hover {
+    background: #feb47b;
+    transform: translateY(-2px);
+}
+
+/* Botão de Cadastro de Pet no Header (inicialmente oculto) */
+#cadastroPetBtn {
+    display: none; /* Permanece oculto por padrão, JS mostra */
+    background: #6a994e; /* Uma cor diferente para destacar */
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    font-size: 1rem;
+    cursor: pointer;
+    border-radius: 20px;
+    transition: background 0.3s ease;
+}
+
+#cadastroPetBtn:hover {
+    background: #8aa97a;
+}
+
+
+/* Mapa de Pets */
+.mapa-pets {
+    padding: 2rem;
+    background-color: #f8f8f8;
+}
+
+#map { /* Estilo para o container do mapa */
+    height: 400px; /* Altura fixa para o mapa */
+    width: 100%;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilos específicos para o formulário de Cadastro de Pet dentro do modal */
+#formCadastroPet label {
+    margin-top: 15px; /* Mais espaço entre labels */
+}
+
+/* Responsividade Básica */
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    header h1 {
+        margin-bottom: 0.5rem;
+    }
+
+    .banner {
+        padding: 2rem 1rem;
+    }
+
+    .pets-container {
+        grid-template-columns: 1fr; /* Uma coluna em telas menores */
+    }
+
+    .card-pet {
+        width: 100%; /* Ocupa largura total */
+    }
+
+    .modal-content {
+        padding: 1.5rem;
+    }
+}
+.modal-content {
+    background-color: #fefefe;
+    margin: auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 500px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    position: relative;
+
+    /* --- NOVAS PROPRIEDADES (Tente com !important se nada mais funcionar) --- */
+    max-height: calc(100vh - 100px); /* Tenta altura máxima da viewport menos um offset */
+                                   /* Isso garante que ele sempre tenha um espaço em cima/embaixo */
+    overflow-y: auto;              /* Ativa a rolagem vertical se o conteúdo exceder */
+    -webkit-overflow-scrolling: touch; /* Melhora a rolagem em dispositivos iOS */
+    
+    /* Garante que o conteúdo interno não "estique" o container */
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box; /* Garante que padding e border estão incluídos na largura/altura */
+}
+
+/* Opcional: Para o formulário dentro do modal, caso ele esteja causando problemas */
+.modal-content form {
+    flex-grow: 1; /* Permite que o formulário ocupe o espaço disponível */
+    display: flex;
+    flex-direction: column;
+    /* Se os inputs estiverem muito apertados, você pode adicionar um gap: */
+    /* gap: 10px; */
+}
+
+.modal-content form label,
+.modal-content form input {
+    margin-bottom: 8px; /* Adiciona um pequeno espaço entre os campos */
+}
+/* Estilos para o Modal de Chat */
+#modalChat .modal-content {
+    max-height: 90vh; /* Ajusta a altura para caber mais conteúdo do chat */
+    width: 90%;
+    max-width: 600px; /* Largura máxima para o chat */
+    display: flex;
+    flex-direction: column; /* Organiza o conteúdo em coluna */
+}
+
+.chat-messages {
+    flex-grow: 1; /* Faz com que a área de mensagens ocupe o máximo de espaço */
+    overflow-y: auto; /* Adiciona rolagem vertical para as mensagens */
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    background-color: #e9e9e9;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-input-area {
+    display: flex;
+    gap: 10px; /* Espaço entre o input e o botão */
+}
+
+#chatMessageInput {
+    flex-grow: 1; /* Faz o input ocupar o espaço restante */
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+#sendMessageBtn {
+    padding: 8px 15px;
+    background-color: #4CAF50; /* Verde */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#sendMessageBtn:hover {
+    background-color: #45a049;
+}
+
+/* Estilos para as mensagens individuais */
+.message {
+    padding: 8px 12px;
+    border-radius: 15px;
+    margin-bottom: 8px;
+    max-width: 70%; /* Limita a largura da bolha de mensagem */
+}
+
+.message.received {
+    background-color: #dcf8c6; /* Cor para mensagens recebidas */
+    align-self: flex-start; /* Alinha à esquerda */
+    margin-right: auto;
+}
+
+.message.sent {
+    background-color: #cce5ff; /* Cor para mensagens enviadas */
+    align-self: flex-end; /* Alinha à direita */
+    margin-left: auto;
+}

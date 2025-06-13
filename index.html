@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Adote um Pet</title>
+  <link rel="stylesheet" href="style.css" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+</head>
+<body>
+  <header>
+    <h1>Adote um Pet</h1>
+    <nav>
+      <button id="cadastroClienteBtn">Cadastre-se</button>
+      <button id="loginBtn">Entrar</button>
+    </nav>
+  </header>
+
+  <section class="banner">
+    <h2>Acolha um pet, transforme uma vida</h2>
+    <p>Encontre pets disponíveis para adoção perto de você</p>
+    <button id="cadastroPetBtn">Cadastrar Pet</button>
+  </section>
+
+  <section class="lista-pets">
+    <h3>Pets próximos de você</h3>
+    <div id="listaPets"></div>
+  </section>
+
+  <section class="mapa-pets">
+    <h3>Veja no mapa os pets disponíveis</h3>
+    <div id="map" style="height: 400px;"></div>
+  </section>
+
+<div id="modalCadastro" class="modal hidden">
+  <div class="modal-content">
+    <span class="close" id="fecharModal">&times;</span>
+    <h3>Cadastrar Novo Pet</h3>
+    <form id="formCadastroPet">
+      <label>Nome:</label>
+      <input type="text" id="nomePet" required>
+
+      <label>Espécie:</label>
+      <input type="text" id="especiePet" required>
+
+      <label>Rua:</label>
+      <input type="text" id="ruaPet" required>
+
+      <label>Número:</label>
+      <input type="text" id="numeroPet" required>
+
+      <label>Bairro:</label>
+      <input type="text" id="bairroPet" required>
+
+      <label>Cidade:</label>
+      <input type="text" id="cidadePet" value="Curitiba" required> <label>Estado (UF):</label>
+      <input type="text" id="estadoPet" value="PR" maxlength="2" required> <label>CEP:</label>
+      <input type="text" id="cepPet" pattern="\d{5}-?\d{3}" placeholder="Ex: 80000-000" required>
+      <label>Idade:</label>
+      <input type="number" id="idadePet" required />
+
+      <button type="submit">Cadastrar Pet</button>
+    </form>
+  </div>
+</div>
+
+  <div id="modalLogin" class="modal hidden">
+    <div class="modal-content">
+      <span class="close" id="fecharLogin">&times;</span>
+      <h3>Login</h3>
+      <form id="loginForm">
+        <label>E-mail:</label>
+        <input type="email" name="email" required>
+        <label>Senha:</label>
+        <input type="password" name="senha" required>
+        <button type="submit">Entrar</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="modalCadastroCliente" class="modal hidden">
+    <div class="modal-content">
+      <span class="close" id="fecharCadastroCliente">&times;</span>
+      <h3>Cadastre-se como Cliente</h3>
+      <form id="formCadastroCliente">
+        <label for="nomeCliente">Nome:</label>
+        <input type="text" id="nomeCliente" required>
+
+        <label for="emailCliente">E-mail:</label>
+        <input type="email" id="emailCliente" required>
+
+        <label for="senhaCliente">Senha:</label>
+        <input type="password" id="senhaCliente" required minlength="4">
+
+        <label for="confirmaSenhaCliente">Confirmar Senha:</label>
+        <input type="password" id="confirmaSenhaCliente" required>
+
+        <button type="submit">Criar Conta</button>
+      </form>
+    </div>
+  </div>
+
+<div id="modalCadastroCliente" class="modal hidden">
+  <div class="modal-content">
+    <span class="close" id="fecharCadastroCliente">&times;</span>
+    <h3>Cadastre-se</h3>
+    <form id="formCadastroCliente">
+      <label for="nomeCliente">Nome:</label>
+      <input type="text" id="nomeCliente" required>
+
+      <label for="emailCliente">E-mail:</label>
+      <input type="email" id="emailCliente" required>
+
+      <label for="senhaCliente">Senha:</label>
+      <input type="password" id="senhaCliente" required minlength="4">
+      <label for="confirmaSenhaCliente">Confirmar Senha:</label>
+      <input type="password" id="confirmaSenhaCliente" required>
+
+      <button type="submit">Criar Conta</button>
+    </form>
+  </div>
+</div>
+
+<div id="modalChat" class="modal hidden">
+    <div class="modal-content">
+        <span class="close" id="fecharChat">&times;</span>
+        <h3 id="chatPetNome">Chat com [Nome do Pet]</h3>
+        <div class="chat-messages" id="chatMessages">
+            <div class="message received">Olá! Tenho interesse no(a) [Nome do Pet].</div>
+            <div class="message sent">Olá! Que legal! Em que posso ajudar?</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatMessageInput" placeholder="Digite sua mensagem...">
+            <button id="sendMessageBtn">Enviar</button>
+        </div>
+    </div>
+</div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script src="script.js"></script>
+</body>
+</html>
