@@ -23,6 +23,12 @@ header h1 {
     letter-spacing: 1px;
 }
 
+header nav {
+    display: flex;
+    align-items: center; /* Alinha os itens da nav verticalmente */
+    gap: 10px; /* Espaçamento entre os itens da nav */
+}
+
 /* Nav Buttons */
 header nav button {
     background-color: transparent;
@@ -32,12 +38,17 @@ header nav button {
     border-radius: 5px;
     cursor: pointer;
     font-size: 1rem;
-    margin-left: 10px;
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 header nav button:hover {
     background-color: rgba(255, 255, 255, 0.2);
+}
+
+#usuarioLogadoDisplay {
+    color: white;
+    font-weight: bold;
+    margin-right: 15px; /* Espaçamento entre o nome do usuário e os botões */
 }
 
 /* Banner */
@@ -387,6 +398,20 @@ footer {
     padding-bottom: 5px;
 }
 
+.conversa-individual {
+    border: 1px dashed #ccc; /* Linha tracejada para separar conversas */
+    padding: 10px;
+    margin-top: 15px;
+    border-radius: 5px;
+    background-color: #f3f3f3;
+}
+
+.conversa-individual h4 {
+    color: #4a4a4a;
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
 .historico-bloco p {
     font-size: 0.95rem;
     margin-bottom: 5px;
@@ -396,6 +421,24 @@ footer {
     color: #555;
 }
 
+.responder-btn {
+    background-color: #007bff !important; /* Azul para responder */
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background-color 0.3s ease;
+    width: auto !important; /* Não ocupa 100% da largura */
+    display: block; /* Para que fique em sua própria linha */
+    margin-left: auto; /* Alinha à direita */
+    margin-right: auto; /* Alinha ao centro */
+}
+
+.responder-btn:hover {
+    background-color: #0056b3 !important;
+}
 
 .drop-area {
   border: 2px dashed #ccc;
