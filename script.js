@@ -444,7 +444,36 @@ fecharChat.addEventListener("click", () => {
     currentPetId = null; // Reseta o ID do pet do chat
 });
 
-sendMessageBtn.addEventListener("click", enviarMensagem);
+sendMessageBtn.addEventListener("click", async () => {
+    const messageInput = document.getElementById("chatMessageInput");
+    const message = messageInput.value.trim();
+
+    if (message && currentPetId && localUsuarioAtual) {
+        // Verifique o que está sendo inserido aqui
+        console.log("Tentando enviar mensagem:", {
+            pet_id: currentPetId,
+            remetente_email: localUsuarioAtual.email, // <-- VERIFIQUE SE É O EMAIL CERTO DO TUTOR
+            conteudo: message
+        });
+
+        const { data, error } = await supabaseClient
+            .from("mensagens_chat")
+            .insert({
+                pet_id: currentPetId,
+                remetente_email: localUsuarioAtual.email, // Certifique-se que é o email do usuário logado
+                conteudo: message
+            });
+
+        if (error) {
+            console.error("Erro ao enviar mensagem:", error);
+            alert("Erro ao enviar mensagem.");
+        } else {
+            console.log("Mensagem enviada com sucesso:", data);
+            messageInput.value = ""; // Limpa o input
+            carregarMensagens(currentPetId); // Recarrega as mensagens do chat
+        }
+    }
+});
 chatMessageInput.addEventListener("keypress", (e) => {
     if (e.key === "Enter") {
         enviarMensagem();
@@ -473,39 +502,45 @@ async function enviarMensagem() {
 }
 
 async function carregarMensagens(petId) {
-    chatMessages.innerHTML = ''; // Limpa mensagens anteriores
+    if (!petId) return;
+    const chatMessagesContainer = document.getElementById("chatMessages");
+    chatMessagesContainer.innerHTML = ''; // Limpa mensagens anteriores
 
+    // Esta é a consulta crucial: ela precisa pegar TODAS as mensagens para este pet_id
     const { data: mensagens, error } = await supabaseClient
         .from('mensagens_chat')
-        .select('*')
-        .eq('pet_id', petId)
-        .order('created_at', { ascending: true });
+        .select('*') // Seleciona todas as colunas
+        .eq('pet_id', petId) // Filtra pelo ID do pet
+        .order('created_at', { ascending: true }); // Ordena por tempo
 
     if (error) {
-        console.error("Erro ao carregar mensagens:", error.message);
+        console.error("Erro ao carregar mensagens do chat:", error);
+        chatMessagesContainer.innerHTML = '<p>Erro ao carregar mensagens.</p>';
         return;
     }
 
     if (mensagens.length === 0) {
-        chatMessages.innerHTML = '<p class="info-message">Nenhuma mensagem ainda. Seja o primeiro a enviar!</p>';
-    } else {
-        mensagens.forEach(msg => {
-            const messageDiv = document.createElement('div');
-            messageDiv.classList.add('message');
-            // Verifica se a mensagem é do usuário logado ou do pet owner/interessado
-            if (msg.remetente_email === localUsuarioAtual.email) {
-                messageDiv.classList.add('sent');
-                messageDiv.textContent = `Você: ${msg.conteudo}`;
-            } else {
-                messageDiv.classList.add('received');
-                const remetenteNome = msg.remetente_email.split('@')[0];
-                messageDiv.textContent = `${remetenteNome}: ${msg.conteudo}`;
-            }
-            chatMessages.appendChild(messageDiv);
-        });
-        // Rola para a última mensagem
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        chatMessagesContainer.innerHTML = '<p>Nenhuma mensagem ainda.</p>';
+        return;
     }
+
+    mensagens.forEach(msg => {
+        const msgElement = document.createElement("div");
+        msgElement.classList.add("chat-message");
+        // Adicione classes para diferenciar remetente e destinatário, se desejar
+        if (msg.remetente_email === localUsuarioAtual.email) {
+            msgElement.classList.add("my-message"); // Mensagens do usuário logado
+        } else {
+            msgElement.classList.add("other-message"); // Mensagens de outros
+        }
+
+        const remetenteNome = msg.remetente_email.split('@')[0]; // Pega a parte antes do '@'
+        msgElement.innerHTML = `<strong>${remetenteNome}:</strong> <span class="math-inline">\{msg\.conteudo\} <br\><small\></span>{new Date(msg.created_at).toLocaleString()}</small>`;
+        chatMessagesContainer.appendChild(msgElement);
+    });
+
+    // Rolagem automática para o final do chat
+    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
 }
 
 // --- Histórico de Conversas ---
