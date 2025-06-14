@@ -156,12 +156,12 @@ async function atualizarEstadoLogin() {
     const { data: { user } } = await supabaseClient.auth.getUser(); // Obtém o usuário logado via Supabase Auth
     const verConversasBtn = document.getElementById("verConversasBtn");
 
-    if (logadoCliente) {
-        verConversasBtn.style.display = "inline-block";
-    } else {
-        verConversasBtn.style.display = "none";
+    if (localStorage.getItem("logadoCliente")) {
+    const email = localStorage.getItem("clienteLogadoEmail");
+    const temPets = petsArray.some(p => p.dono_email === email);
+    verConversasBtn.style.display = temPets ? "inline-block" : "none";
     }
-    if (localStorage.getItem("logadoAdmin")) { // Lógica de admin hardcoded
+    else if (localStorage.getItem("logadoAdmin")) { // Lógica de admin hardcoded
         loginBtn.textContent = "Sair";
         cadastroBtn.style.display = "inline-block"; // Botão de cadastro de pet
         cadastroClienteBtn.style.display = "none"; // Botão de cadastro de cliente
@@ -567,7 +567,7 @@ function atualizarListaPets(currentPetsArray) {
 
             chatPetNome.textContent = `Chat com ${petNome}`;
             const clienteEmail = localStorage.getItem("clienteLogadoEmail");
-            const isTutor = petsArray.find(p => p.nome === petNome && p.dono === clienteEmail);
+            const isTutor = petsArray.find(p => p.nome === petNome && p.dono_email === clienteEmail);
 
             if (isTutor) {
                 chatPetNome.textContent = `Mensagens do seu pet: ${petNome}`;
@@ -621,8 +621,20 @@ function renderizarMensagens(petNome) {
     const clienteEmail = localStorage.getItem("clienteLogadoEmail");
     const isAdmin = localStorage.getItem("logadoAdmin");
 
-    const remetenteAtual = clienteEmail || (isAdmin ? "admin" : "desconhecido");
+    const remetenteAtual = localStorage.getItem("clienteLogadoEmail") || (localStorage.getItem("logadoAdmin") ? "admin" : "desconhecido");
+    const isTutor = petsArray.some(p => p.nome === petNome && p.dono_email === clienteEmail);
 
+    mensagens
+    .filter(msg => msg.pet === petNome)
+    .forEach(msg => {
+        let tipo;
+        if (isTutor) {
+            tipo = msg.remetente === "admin" || msg.remetente === clienteEmail ? "sent" : "received";
+        } else {
+            tipo = msg.remetente === remetenteAtual ? "sent" : "received";
+        }
+        addMessageToChat(msg.conteudo, tipo);
+    });
     chatMessages.innerHTML = "";
 
     mensagens
