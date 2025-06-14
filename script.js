@@ -6,8 +6,8 @@ const { createClient } = supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let petsArray = []; // Vai armazenar os pets carregados do Supabase
-let localUsuarioAtual = null;
-const RAIO_FILTRO_KM = 300;
+let localUsuarioAtual = null; // Objeto do usuário Supabase
+const RAIO_FILTRO_KM = 300; // Constante para filtro de raio (se usar no futuro)
 let currentPetId = null; // Variável global para armazenar o ID do pet do chat ativo
 
 // --- Elementos do DOM ---
@@ -30,7 +30,8 @@ const emailCliente = document.getElementById("emailCliente");
 const senhaCliente = document.getElementById("senhaCliente");
 const confirmaSenhaCliente = document.getElementById("confirmaSenhaCliente");
 const logoutBtn = document.getElementById("logoutBtn");
-const verConversasBtn = document.getElementById("verConversasBtn");
+const verConversasBtn = document.getElementById("verConversasBtn"); // Botão "Ver Conversas" do tutor
+const usuarioLogadoDisplay = document.getElementById("usuarioLogadoDisplay"); // Novo elemento para exibir o usuário
 
 // Chat Elements
 const modalChat = document.getElementById("modalChat");
@@ -45,6 +46,8 @@ const modalHistorico = document.getElementById("modalHistorico");
 const fecharHistorico = document.getElementById("fecharHistorico");
 const historicoMensagensContainer = document.getElementById("historicoMensagensContainer");
 
+// Leaflet Map
+let map; // Variável para o mapa Leaflet
 
 // --- Funções de Modal ---
 cadastroBtn.addEventListener("click", () => {
@@ -94,20 +97,32 @@ async function verificarLogin() {
     localUsuarioAtual = user;
 
     const clienteLogadoEmail = localStorage.getItem("clienteLogadoEmail");
-    const logadoAdmin = localStorage.getItem("logadoAdmin");
+    const logadoAdmin = localStorage.getItem("logadoAdmin"); // String "true" ou null
 
-    if (user || clienteLogadoEmail || logadoAdmin) {
+    // Atualiza a exibição dos botões de autenticação
+    if (user || clienteLogadoEmail || logadoAdmin === "true") {
         document.getElementById("cadastroClienteBtn").style.display = "none";
         document.getElementById("loginBtn").style.display = "none";
         document.getElementById("logoutBtn").style.display = "block";
         document.getElementById("verConversasBtn").style.display = "block"; // Mostrar botão de conversas
+        
+        // Exibir nome do usuário logado
+        if (clienteLogadoEmail) {
+            usuarioLogadoDisplay.textContent = `Olá, ${clienteLogadoEmail.split('@')[0]}!`;
+            usuarioLogadoDisplay.style.display = "block";
+        } else if (logadoAdmin === "true") {
+            usuarioLogadoDisplay.textContent = `Olá, Admin!`; // Ou um nome de admin específico
+            usuarioLogadoDisplay.style.display = "block";
+        }
     } else {
         document.getElementById("cadastroClienteBtn").style.display = "block";
         document.getElementById("loginBtn").style.display = "block";
         document.getElementById("logoutBtn").style.display = "none";
         document.getElementById("verConversasBtn").style.display = "none";
+        usuarioLogadoDisplay.style.display = "none";
     }
 
+    // Apenas admin pode cadastrar pet
     if (logadoAdmin === "true") {
         cadastroBtn.style.display = "block";
     } else {
@@ -118,7 +133,11 @@ async function verificarLogin() {
 }
 
 // Chamar verificarLogin ao carregar a página
-document.addEventListener("DOMContentLoaded", verificarLogin);
+document.addEventListener("DOMContentLoaded", () => {
+    verificarLogin();
+    inicializarMapa(); // Inicializa o mapa ao carregar o DOM
+});
+
 supabaseClient.auth.onAuthStateChange((event, session) => {
     verificarLogin(); // Verifica login sempre que o estado de autenticação mudar
 });
@@ -141,7 +160,7 @@ loginForm.addEventListener("submit", async (e) => {
             console.log("Usuário logado:", data.user);
             localUsuarioAtual = data.user;
             localStorage.setItem("clienteLogadoEmail", data.user.email);
-            if (email === "admin@example.com") { // Exemplo de admin
+            if (email === "admin@example.com") { // EXATAMENTE O EMAIL DO SEU ADMIN
                 localStorage.setItem("logadoAdmin", "true");
             } else {
                 localStorage.removeItem("logadoAdmin");
@@ -152,7 +171,7 @@ loginForm.addEventListener("submit", async (e) => {
             emailLogin.value = "";
             senhaLogin.value = "";
             verificarLogin();
-            renderizarPets();
+            renderizarPets(); // Para atualizar os botões de chat/excluir
         }
     } catch (err) {
         console.error("Erro inesperado no login:", err);
@@ -185,9 +204,7 @@ cadastroClienteForm.addEventListener("submit", async (e) => {
             alert("Cadastro realizado com sucesso! Verifique seu email para confirmar a conta.");
             modalCadastroCliente.classList.remove("active");
             modalCadastroCliente.classList.add("hidden");
-            emailCliente.value = "";
-            senhaCliente.value = "";
-            confirmaSenhaCliente.value = "";
+            cadastroClienteForm.reset(); // Limpa o formulário
         }
     } catch (err) {
         console.error("Erro inesperado no cadastro:", err);
@@ -206,8 +223,8 @@ logoutBtn.addEventListener("click", async () => {
             localStorage.removeItem("logadoAdmin");
             localUsuarioAtual = null;
             alert("Logout realizado com sucesso!");
-            verificarLogin();
-            renderizarPets();
+            verificarLogin(); // Atualiza a UI para estado deslogado
+            renderizarPets(); // Atualiza a lista de pets sem botões de chat
         }
     } catch (err) {
         console.error("Erro inesperado no logout:", err);
@@ -228,6 +245,7 @@ async function buscarPetsDoSupabase() {
         }
         petsArray = data;
         renderizarPets();
+        atualizarMapaComPets(petsArray); // Atualiza os marcadores no mapa
     } catch (err) {
         console.error(err);
         listaPetsDiv.innerHTML = "<p>Não foi possível carregar os pets.</p>";
@@ -237,6 +255,7 @@ async function buscarPetsDoSupabase() {
 async function renderizarPets() {
     listaPetsDiv.innerHTML = "";
     const clienteLogadoEmail = localStorage.getItem("clienteLogadoEmail");
+    const isAdmin = localStorage.getItem("logadoAdmin") === "true";
 
     petsArray.forEach((pet) => {
         const petDiv = document.createElement("div");
@@ -248,12 +267,14 @@ async function renderizarPets() {
             <p><strong>Localização:</strong> ${pet.localizacao}</p>
             <img src="${pet.foto_url}" alt="${pet.nome}" />
             ${
+                // Botão "Conversar com o Tutor" visível para clientes NÃO donos do pet
                 clienteLogadoEmail && clienteLogadoEmail !== pet.dono_email
                     ? `<button class="chat-btn" data-pet-id="${pet.id}" data-pet-nome="${pet.nome}">Conversar com o Tutor</button>`
                     : ""
             }
             ${
-                clienteLogadoEmail && clienteLogadoEmail === pet.dono_email
+                // Botão "Excluir Pet" visível para o dono do pet OU para o admin
+                (clienteLogadoEmail && clienteLogadoEmail === pet.dono_email) || isAdmin
                     ? `<button class="delete-btn" data-pet-id="${pet.id}">Excluir Pet</button>`
                     : ""
             }
@@ -308,7 +329,7 @@ cadastroPetForm.addEventListener("submit", async (e) => {
     const idade = parseInt(document.getElementById("idadePet").value);
     const localizacao = document.getElementById("localizacaoPet").value;
     const fotoFile = document.getElementById("fotoPet").files[0];
-    const donoEmail = localStorage.getItem("clienteLogadoEmail");
+    const donoEmail = localStorage.getItem("clienteLogadoEmail"); // Quem está logado é o dono
 
     if (!donoEmail) {
         alert("Você precisa estar logado para cadastrar um pet.");
@@ -331,6 +352,13 @@ cadastroPetForm.addEventListener("submit", async (e) => {
             foto_url = `${SUPABASE_URL}/storage/v1/object/public/fotos-pets/${data.path}`;
         }
 
+        // Simula a obtenção de coordenadas de localização
+        const coordenadas = await obterCoordenadasDaLocalizacao(localizacao);
+        if (!coordenadas) {
+            alert("Não foi possível encontrar as coordenadas para a localização informada.");
+            return;
+        }
+
         const { error } = await supabaseClient.from("pets").insert([
             {
                 nome,
@@ -340,6 +368,8 @@ cadastroPetForm.addEventListener("submit", async (e) => {
                 localizacao,
                 foto_url,
                 dono_email: donoEmail,
+                latitude: coordenadas.lat,
+                longitude: coordenadas.lng
             },
         ]);
 
@@ -351,7 +381,7 @@ cadastroPetForm.addEventListener("submit", async (e) => {
         modalCadastro.classList.remove("active");
         modalCadastro.classList.add("hidden");
         cadastroPetForm.reset();
-        buscarPetsDoSupabase(); // Atualiza a lista de pets
+        buscarPetsDoSupabase(); // Atualiza a lista de pets e o mapa
     } catch (err) {
         console.error(err);
         alert("Ocorreu um erro ao cadastrar o pet: " + err.message);
@@ -446,7 +476,7 @@ async function renderizarMensagens(petNome) {
         } else {
             mensagens.forEach(msg => {
                 let tipo;
-                // Lógica principal: se o remetente da mensagem é o próprio visualizador
+                // Compara o remetente da mensagem (salvo no DB) com o e-mail do usuário logado AGORA
                 if (msg.remetente_email === usuarioVisualizadorEmail) {
                     tipo = "sent";
                 } else {
@@ -477,7 +507,7 @@ sendMessageBtn.addEventListener("click", async () => {
     }
 
     const clienteLogadoEmail = localStorage.getItem("clienteLogadoEmail");
-    const isAdmin = localStorage.getItem("logadoAdmin");
+    const isAdmin = localStorage.getItem("logadoAdmin"); // String "true" ou null
     const petNomeAtual = chatPetNome.textContent.replace("Chat com ", "").replace("Mensagens do seu pet: ", "");
 
     let remetenteParaSalvar = null;
@@ -498,10 +528,10 @@ sendMessageBtn.addEventListener("click", async () => {
 });
 
 
-// --- Lógica do Histórico de Conversas (Tutor) ---
+// --- Lógica do Histórico de Conversas (Tutor/Admin) ---
 verConversasBtn.addEventListener("click", async () => {
     const clienteEmail = localStorage.getItem("clienteLogadoEmail");
-    const isAdmin = localStorage.getItem("logadoAdmin");
+    const isAdmin = localStorage.getItem("logadoAdmin"); // String "true" ou null
 
     if (!clienteEmail && isAdmin !== "true") {
         alert("Você precisa estar logado como cliente ou administrador para ver as conversas.");
@@ -577,5 +607,60 @@ verConversasBtn.addEventListener("click", async () => {
 });
 
 
+// --- Funções de Mapa (Leaflet) ---
+function inicializarMapa() {
+    if (!map) { // Inicializa o mapa apenas uma vez
+        map = L.map('map').setView([-25.4284, -49.2733], 13); // Coordenadas de Curitiba, Brasil
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+    }
+}
+
+let markers = []; // Para armazenar os marcadores atuais no mapa
+
+function atualizarMapaComPets(pets) {
+    if (!map) {
+        console.warn("Mapa não inicializado. Chamando inicializarMapa().");
+        inicializarMapa(); // Garante que o mapa esteja inicializado antes de adicionar marcadores
+    }
+
+    // Remove marcadores antigos
+    markers.forEach(marker => marker.remove());
+    markers = [];
+
+    pets.forEach(pet => {
+        if (pet.latitude && pet.longitude) {
+            const marker = L.marker([pet.latitude, pet.longitude]).addTo(map);
+            marker.bindPopup(`<b>${pet.nome} (${pet.especie})</b><br>${pet.localizacao}`).openPopup();
+            markers.push(marker);
+        }
+    });
+}
+
+// Simula a obtenção de coordenadas de uma localização (substitua por API de geocodificação real)
+async function obterCoordenadasDaLocalizacao(localizacao) {
+    // Esta é uma implementação SIMPLIFICADA para fins de demonstração.
+    // Em um ambiente de produção, você usaria uma API de geocodificação
+    // como OpenCage, Google Geocoding API, etc.
+    // Exemplo usando uma API pública (limitada para produção): Nominatim (OpenStreetMap)
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(localizacao)}`);
+        const data = await response.json();
+        if (data && data.length > 0) {
+            return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+        }
+    } catch (error) {
+        console.error("Erro ao obter coordenadas:", error);
+    }
+    // Retorna coordenadas padrão se a localização não for encontrada (ex: Curitiba)
+    return { lat: -25.4284, lng: -49.2733 }; 
+}
+
+
 // --- Inicialização ---
-buscarPetsDoSupabase(); // Carrega os pets ao iniciar
+// A ordem é importante:
+// 1. Verificar login (para ajustar UI)
+// 2. Buscar pets (e consequentemente renderizar pets e atualizar mapa)
+buscarPetsDoSupabase(); // Carrega os pets e atualiza o mapa ao iniciar
+// O mapa agora é inicializado em 'DOMContentLoaded' e atualizado após buscarPetsDoSupabase

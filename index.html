@@ -15,7 +15,7 @@
   <header>
     <h1>Adote um Pet</h1>
     <nav>
-      <button id="cadastroClienteBtn">Cadastre-se</button>
+      <span id="usuarioLogadoDisplay" style="display: none;"></span> <button id="verConversasBtn" style="display: none;">Ver Conversas</button> <button id="cadastroClienteBtn">Cadastre-se</button>
       <button id="loginBtn">Entrar</button>
       <button id="logoutBtn" style="display: none;">Sair</button>
     </nav>
@@ -34,8 +34,7 @@
 
   <section class="mapa-pets">
     <h3>Veja no mapa os pets disponíveis</h3>
-    <div id="map" style="height: 400px;"></div>
-  </section>
+    <div id="map" style="height: 400px;"></div> </section>
 
   <footer>
     <p>&copy; 2024 Adote um Pet. Todos os direitos reservados.</p>
@@ -116,7 +115,6 @@
     </div>
 </div>
 
-<button id="verConversasBtn" style="display: none;">Ver Conversas</button>
 <div id="modalHistorico" class="modal hidden">
   <div class="modal-content">
     <span id="fecharHistorico" class="close">&times;</span>
