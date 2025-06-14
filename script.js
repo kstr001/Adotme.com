@@ -231,7 +231,7 @@ petForm.addEventListener("submit", async (e) => {
 
     // Upload da imagem para o Supabase Storage
     const { data: uploadData, error: uploadError } = await supabaseClient.storage
-        .from('pet_fotos') // Certifique-se de que este bucket existe no Supabase Storage
+        .from('pet-fotos') // Certifique-se de que este bucket existe no Supabase Storage
         .upload(`${Date.now()}-${fotoFile.name}`, fotoFile, {
             cacheControl: '3600',
             upsert: false,
@@ -245,7 +245,7 @@ petForm.addEventListener("submit", async (e) => {
     } else {
         // Obter a URL pública da imagem
         const { data: publicUrlData } = supabaseClient.storage
-            .from('pet_fotos')
+            .from('pet-fotos')
             .getPublicUrl(uploadData.path);
         fotoUrl = publicUrlData.publicUrl;
     }
