@@ -1,4 +1,4 @@
-const SUPABASE_URL = "https://ymfmlqzwnzmtuvuhavbt.supabase.co/auth/v1/signup";
+const SUPABASE_URL = "https://ymfmlqzwnzmtuvuhavbt.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZm1scXp3bnptdHV2dWhhdmJ0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTg5Mzg4OSwiZXhwIjoyMDY1NDY5ODg5fQ.7CP9ysj_k0GG2YVeD3Fs_BWe9aXkyaO4i-L8k6ghWmg";
 
 // --- Inicialização do Supabase Client (melhor prática) ---
