@@ -545,7 +545,10 @@ function atualizarListaPets(currentPetsArray) {
             <strong>${pet.nome}</strong>
             <p>Espécie: ${pet.especie}</p>
             <p>Idade: ${pet.idade !== undefined && pet.idade !== null ? pet.idade + " anos" : "não informada"}</p>
-            <button class="chat-pet-btn" data-pet-nome="${pet.nome}">Conversar com o Tutor</button>
+            ${isDono 
+                ? `<button class="ver-conversas-btn" data-pet-nome="${pet.nome}">Ver Conversas</button>` 
+                : `<button class="chat-pet-btn" data-pet-nome="${pet.nome}">Conversar com o Tutor</button>`
+            }
             ${isDono ? `<button class="excluir-pet-btn" data-pet-id="${pet.id}">Excluir</button>` : ""}
         `;
         lista.appendChild(card);
@@ -654,4 +657,46 @@ function handleFiles(e) {
         previewImg.style.display = "block";
     };
     reader.readAsDataURL(file);
+}
+const modalHistoricoChat = document.getElementById("modalHistoricoChat");
+const fecharHistoricoChat = document.getElementById("fecharHistoricoChat");
+const listaMensagensRecebidas = document.getElementById("listaMensagensRecebidas");
+
+fecharHistoricoChat.addEventListener("click", () => {
+  modalHistoricoChat.classList.remove("active");
+  modalHistoricoChat.classList.add("hidden");
+});
+
+// Ao clicar no botão "Ver Conversas"
+document.addEventListener("click", (e) => {
+  if (e.target.classList.contains("ver-conversas-btn")) {
+    const petNome = e.target.dataset.petNome;
+    mostrarMensagensDoTutor(petNome);
+  }
+});
+
+function mostrarMensagensDoTutor(petNome) {
+  const mensagens = JSON.parse(localStorage.getItem("mensagensChat") || "[]");
+  const mensagensDoPet = mensagens.filter(msg => msg.pet === petNome);
+
+  const agrupadasPorUsuario = mensagensDoPet.reduce((acc, msg) => {
+    if (msg.remetente !== "admin") {
+      if (!acc[msg.remetente]) acc[msg.remetente] = [];
+      acc[msg.remetente].push(msg);
+    }
+    return acc;
+  }, {});
+
+  listaMensagensRecebidas.innerHTML = "";
+  for (const [usuario, msgs] of Object.entries(agrupadasPorUsuario)) {
+    const div = document.createElement("div");
+    div.innerHTML = `<h4>${usuario}</h4><ul>` +
+      msgs.map(m => `<li>${new Date(m.data).toLocaleString()}: ${m.conteudo}</li>`).join("") +
+      `</ul>`;
+    listaMensagensRecebidas.appendChild(div);
+  }
+
+  document.getElementById("tituloHistoricoChat").textContent = `Mensagens para ${petNome}`;
+  modalHistoricoChat.classList.remove("hidden");
+  modalHistoricoChat.classList.add("active");
 }
