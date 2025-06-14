@@ -444,36 +444,7 @@ fecharChat.addEventListener("click", () => {
     currentPetId = null; // Reseta o ID do pet do chat
 });
 
-sendMessageBtn.addEventListener("click", async () => {
-    const messageInput = document.getElementById("chatMessageInput");
-    const message = messageInput.value.trim();
-
-    if (message && currentPetId && localUsuarioAtual) {
-        // Verifique o que está sendo inserido aqui
-        console.log("Tentando enviar mensagem:", {
-            pet_id: currentPetId,
-            remetente_email: localUsuarioAtual.email, // <-- VERIFIQUE SE É O EMAIL CERTO DO TUTOR
-            conteudo: message
-        });
-
-        const { data, error } = await supabaseClient
-            .from("mensagens_chat")
-            .insert({
-                pet_id: currentPetId,
-                remetente_email: localUsuarioAtual.email, // Certifique-se que é o email do usuário logado
-                conteudo: message
-            });
-
-        if (error) {
-            console.error("Erro ao enviar mensagem:", error);
-            alert("Erro ao enviar mensagem.");
-        } else {
-            console.log("Mensagem enviada com sucesso:", data);
-            messageInput.value = ""; // Limpa o input
-            carregarMensagens(currentPetId); // Recarrega as mensagens do chat
-        }
-    }
-});
+sendMessageBtn.addEventListener("click", enviarMensagem);
 chatMessageInput.addEventListener("keypress", (e) => {
     if (e.key === "Enter") {
         enviarMensagem();
@@ -502,45 +473,39 @@ async function enviarMensagem() {
 }
 
 async function carregarMensagens(petId) {
-    if (!petId) return;
-    const chatMessagesContainer = document.getElementById("chatMessages");
-    chatMessagesContainer.innerHTML = ''; // Limpa mensagens anteriores
+    chatMessages.innerHTML = ''; // Limpa mensagens anteriores
 
-    // Esta é a consulta crucial: ela precisa pegar TODAS as mensagens para este pet_id
     const { data: mensagens, error } = await supabaseClient
         .from('mensagens_chat')
-        .select('*') // Seleciona todas as colunas
-        .eq('pet_id', petId) // Filtra pelo ID do pet
-        .order('created_at', { ascending: true }); // Ordena por tempo
+        .select('*')
+        .eq('pet_id', petId)
+        .order('created_at', { ascending: true });
 
     if (error) {
-        console.error("Erro ao carregar mensagens do chat:", error);
-        chatMessagesContainer.innerHTML = '<p>Erro ao carregar mensagens.</p>';
+        console.error("Erro ao carregar mensagens:", error.message);
         return;
     }
 
     if (mensagens.length === 0) {
-        chatMessagesContainer.innerHTML = '<p>Nenhuma mensagem ainda.</p>';
-        return;
+        chatMessages.innerHTML = '<p class="info-message">Nenhuma mensagem ainda. Seja o primeiro a enviar!</p>';
+    } else {
+        mensagens.forEach(msg => {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            // Verifica se a mensagem é do usuário logado ou do pet owner/interessado
+            if (msg.remetente_email === localUsuarioAtual.email) {
+                messageDiv.classList.add('sent');
+                messageDiv.textContent = `Você: ${msg.conteudo}`;
+            } else {
+                messageDiv.classList.add('received');
+                const remetenteNome = msg.remetente_email.split('@')[0];
+                messageDiv.textContent = `${remetenteNome}: ${msg.conteudo}`;
+            }
+            chatMessages.appendChild(messageDiv);
+        });
+        // Rola para a última mensagem
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
-
-    mensagens.forEach(msg => {
-        const msgElement = document.createElement("div");
-        msgElement.classList.add("chat-message");
-        // Adicione classes para diferenciar remetente e destinatário, se desejar
-        if (msg.remetente_email === localUsuarioAtual.email) {
-            msgElement.classList.add("my-message"); // Mensagens do usuário logado
-        } else {
-            msgElement.classList.add("other-message"); // Mensagens de outros
-        }
-
-        const remetenteNome = msg.remetente_email.split('@')[0]; // Pega a parte antes do '@'
-        msgElement.innerHTML = `<strong>${remetenteNome}:</strong> <span class="math-inline">\{msg\.conteudo\} <br\><small\></span>{new Date(msg.created_at).toLocaleString()}</small>`;
-        chatMessagesContainer.appendChild(msgElement);
-    });
-
-    // Rolagem automática para o final do chat
-    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
 }
 
 // --- Histórico de Conversas ---
@@ -557,17 +522,16 @@ verConversasBtn.addEventListener("click", async () => {
         const usuarioLogadoEmail = localUsuarioAtual.email;
         const isAdmin = (usuarioLogadoEmail === "SEU_EMAIL_ADMIN@EXEMPLO.COM"); // Verificação de admin
 
-        // 1. Buscar pets onde o usuário logado é o dono
+        // Buscar todos os pets para os quais o usuário logado é o dono OU onde há conversas com o usuário
         const { data: petsOwnedByUser, error: ownedPetsError } = await supabaseClient
             .from('pets')
-            .select('id, nome, dono_email');
-
+            .select('id, nome, dono_email')
+            .eq('dono_email', usuarioLogadoEmail);
         if (ownedPetsError) throw ownedPetsError;
 
-        const filteredOwnedPets = petsOwnedByUser.filter(pet => pet.dono_email === usuarioLogadoEmail);
-
-
-        // 2. Buscar pet_ids das mensagens onde o usuário logado é o remetente
+        // Segundo, buscar pets envolvidos em conversas com o usuário logado (como remetente)
+        // Isso é mais complexo, pois precisamos dos pet_ids das mensagens.
+        // Primeiro, busque os pet_ids das mensagens do usuário
         const { data: mensagensDoUsuario, error: mensagensError } = await supabaseClient
             .from('mensagens_chat')
             .select('pet_id')
@@ -588,16 +552,18 @@ verConversasBtn.addEventListener("click", async () => {
         }
 
         // Combinar os dois conjuntos de pets e remover duplicatas
-        const allPets = [...filteredOwnedPets, ...petsComConversas];
-        // A linha que você apontou com erro, mas agora usando 'allPets' que tem todos os dados
+        const allPets = [...petsOwnedByUser, ...petsComConversas];
         const petsUnicos = Array.from(new Set(allPets.map(pet => pet.id)))
-                                .map(id => allPets.find(pet => pet.id === id));
+                                    .map(id => allPets.find(pet => pet.id === id));
 
-
+        // Agora, use 'petsUnicos' no lugar de 'petsDoUsuario' no restante do seu código
         if (petsUnicos.length === 0 && !isAdmin) {
             historicoMensagensContainer.innerHTML = '<p>Você não tem pets cadastrados nem conversas iniciadas.</p>';
         } else {
-            // Seu loop for (const pet of petsUnicos) ... continua aqui
+            // Filtrar pets únicos se a busca por mensagens trouxer duplicatas
+            const petsUnicos = Array.from(new Set(petsDoUsuario.map(pet => pet.id)))
+                                    .map(id => petsDoUsuario.find(pet => pet.id === id));
+
             for (const pet of petsUnicos) {
                 const { data: mensagens, error: mensagensError } = await supabaseClient
                     .from('mensagens_chat')
