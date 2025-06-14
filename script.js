@@ -37,8 +37,11 @@ const petEspecie = document.getElementById("especie");
 const petIdade = document.getElementById("idade");
 const petDescricao = document.getElementById("descricao");
 const petFotoInput = document.getElementById("petFoto");
-const petCEP = document.getElementById("cep"); // NOVO
-const petEndereco = document.getElementById("endereco"); // NOVO
+const petCEP = document.getElementById("cep"); // Campo CEP
+const enderecoAutomaticoDiv = document.getElementById("enderecoAutomatico"); // Div para exibir o endereço automático
+const petNumero = document.getElementById("numero"); // Campo Número (novo)
+
+let enderecoCompletoViaCEP = null; // Variável para armazenar o endereço completo do ViaCEP
 
 // --- Elementos do Chat ---
 const modalChat = document.getElementById("modalChat");
@@ -70,6 +73,8 @@ fecharCadastro.addEventListener("click", () => {
     modalCadastro.classList.remove("active");
     modalCadastro.classList.add("hidden");
     petForm.reset(); // Limpa o formulário ao fechar
+    enderecoAutomaticoDiv.innerHTML = '<p style="margin: 0;">Aguardando CEP...</p>'; // Reseta a mensagem do endereço
+    enderecoCompletoViaCEP = null; // Limpa a variável
 });
 
 loginBtn.addEventListener("click", () => {
@@ -200,18 +205,24 @@ petForm.addEventListener("submit", async (e) => {
     const especie = petEspecie.value;
     const idade = parseInt(petIdade.value);
     const descricao = petDescricao.value;
-    const cep = petCEP.value; // NOVO
-    const endereco = petEndereco.value; // NOVO
-    const fotoFile = petFotoInput.files[0];
+    const cep = petCEP.value;
+    const numero = petNumero.value; // NOVO: Captura o número
 
     if (!localUsuarioAtual) {
         alert("Você precisa estar logado para cadastrar um pet.");
         return;
     }
 
-    // Combine CEP e Endereço para uma consulta de geocodificação
-    const enderecoCompleto = `${endereco}, CEP ${cep}`; 
-    const { lat, lng } = await obterCoordenadasDaLocalizacao(enderecoCompleto);
+    if (!enderecoCompletoViaCEP) {
+        alert("Por favor, digite um CEP válido e aguarde o preenchimento automático do endereço.");
+        return;
+    }
+
+    // Combine o endereço do ViaCEP com o número para a geocodificação
+    const enderecoParaGeocodificacao = `${enderecoCompletoViaCEP}, ${numero}`; 
+    const fotoFile = petFotoInput.files[0];
+
+    const { lat, lng } = await obterCoordenadasDaLocalizacao(enderecoParaGeocodificacao);
 
     if (!lat || !lng) {
         alert("Não foi possível obter as coordenadas para o endereço fornecido. Por favor, tente novamente com um endereço mais preciso.");
@@ -246,7 +257,7 @@ petForm.addEventListener("submit", async (e) => {
             idade: idade,
             descricao: descricao,
             dono_email: localUsuarioAtual.email, // Assume que o email do usuário logado é o dono
-            localizacao: enderecoCompleto, // Usa o endereço completo para a coluna de localização
+            localizacao: enderecoParaGeocodificacao, // Usa o endereço completo para a coluna de localização
             latitude: lat,
             longitude: lng,
             foto_url: fotoUrl
@@ -261,9 +272,58 @@ petForm.addEventListener("submit", async (e) => {
         petForm.reset();
         modalCadastro.classList.remove("active");
         modalCadastro.classList.add("hidden");
+        enderecoAutomaticoDiv.innerHTML = '<p style="margin: 0;">Aguardando CEP...</p>'; // Reseta a mensagem do endereço
+        enderecoCompletoViaCEP = null; // Limpa a variável
         renderizarPets(); // Atualiza a lista e o mapa
     }
 });
+
+// Event listener para o campo CEP
+petCEP.addEventListener('blur', async () => {
+    const cep = petCEP.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+    if (cep.length === 8) { // Verifica se tem 8 dígitos
+        await buscarEnderecoPorCEP(cep);
+    } else {
+        enderecoAutomaticoDiv.innerHTML = '<p style="margin: 0; color: red;">CEP inválido.</p>';
+        enderecoCompletoViaCEP = null;
+    }
+});
+
+// Opcional: formata o CEP enquanto digita
+petCEP.addEventListener('input', (e) => {
+    let value = e.target.value.replace(/\D/g, ''); // Remove tudo que não é dígito
+    if (value.length > 5) {
+        value = value.substring(0, 5) + '-' + value.substring(5, 8);
+    }
+    e.target.value = value;
+});
+
+async function buscarEnderecoPorCEP(cep) {
+    enderecoAutomaticoDiv.innerHTML = '<p style="margin: 0;">Buscando endereço...</p>';
+    try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const data = await response.json();
+
+        if (data.erro) {
+            enderecoAutomaticoDiv.innerHTML = '<p style="margin: 0; color: red;">CEP não encontrado.</p>';
+            enderecoCompletoViaCEP = null;
+        } else {
+            const rua = data.logradouro || '';
+            const bairro = data.bairro || '';
+            const cidade = data.localidade || '';
+            const estado = data.uf || '';
+
+            const enderecoFormatado = `${rua}, ${bairro}, ${cidade} - ${estado}`;
+            enderecoAutomaticoDiv.innerHTML = `<p style="margin: 0;">${enderecoFormatado}</p>`;
+            enderecoCompletoViaCEP = enderecoFormatado; // Armazena para uso posterior
+        }
+    } catch (error) {
+        console.error("Erro ao buscar CEP:", error);
+        enderecoAutomaticoDiv.innerHTML = '<p style="margin: 0; color: red;">Erro ao buscar CEP. Tente novamente.</p>';
+        enderecoCompletoViaCEP = null;
+    }
+}
+
 
 async function renderizarPets() {
     const { data: pets, error } = await supabaseClient

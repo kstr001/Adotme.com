@@ -50,7 +50,7 @@
         <input type="text" id="nome" required>
 
         <label for="especie">Espécie:</label>
-        <select id="especie" required>
+        <select type="text" id="especie" required>
           <option value="">Selecione...</option>
           <option value="Cachorro">Cachorro</option>
           <option value="Gato">Gato</option>
@@ -64,10 +64,14 @@
         <textarea id="descricao" rows="4" required></textarea>
 
         <label for="cep">CEP:</label>
-        <input type="text" id="cep" required placeholder="Ex: 80000-000">
+        <input type="text" id="cep" required placeholder="Ex: 80000-000" maxlength="9">
 
-        <label for="endereco">Endereço:</label>
-        <input type="text" id="endereco" required placeholder="Rua, número, bairro, cidade, estado">
+        <div id="enderecoAutomatico" style="margin-top: 10px; padding: 10px; border: 1px dashed #ccc; background-color: #f9f9f9; border-radius: 5px; min-height: 30px; display: flex; align-items: center; justify-content: center; color: #555;">
+          <p style="margin: 0;">Aguardando CEP...</p>
+        </div>
+
+        <label for="numero">Número:</label>
+        <input type="text" id="numero" placeholder="Ex: 123" required>
         
         <label for="petFoto">Foto do Pet:</label>
         <input type="file" id="petFoto" accept="image/*" required>
