@@ -416,7 +416,8 @@ const novoPet = {
     estado,
     cep,
     local: coordenadas,
-    dono: donoEmail // associando o dono ao pet
+    dono: donoEmail, // ← adicione essa vírgula aqui!
+    foto: imagemBase64
 };
 
     petsArray.push(novoPet);
@@ -507,7 +508,7 @@ function atualizarListaPets(currentPetsArray) {
         const isDono = clienteEmail && pet.dono === clienteEmail;
 
         card.innerHTML = `
-            <img src="https://via.placeholder.com/150" alt="${pet.nome} para adoção" />
+            <img src="${pet.foto || 'https://via.placeholder.com/150'}" alt="${pet.nome} para adoção" />
             <strong>${pet.nome}</strong>
             <p>Espécie: ${pet.especie}</p>
             <p>Idade: ${pet.idade !== undefined && pet.idade !== null ? pet.idade + " anos" : "não informada"}</p>
@@ -564,4 +565,41 @@ function renderizarMensagens(petNome) {
             const tipo = msg.remetente === remetenteAtual ? "sent" : "received";
             addMessageToChat(msg.conteudo, tipo);
         });
+}
+const dropArea = document.getElementById("dropArea");
+const inputFile = document.getElementById("fotoPetInput");
+const previewImg = document.getElementById("previewPetFoto");
+let imagemBase64 = "";
+
+dropArea.addEventListener("click", () => inputFile.click());
+
+inputFile.addEventListener("change", handleFiles);
+
+dropArea.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  dropArea.classList.add("highlight");
+});
+
+dropArea.addEventListener("dragleave", () => {
+  dropArea.classList.remove("highlight");
+});
+
+dropArea.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropArea.classList.remove("highlight");
+  const files = e.dataTransfer.files;
+  if (files.length) handleFiles({ target: { files } });
+});
+
+function handleFiles(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    imagemBase64 = reader.result;
+    previewImg.src = imagemBase64;
+    previewImg.style.display = "block";
+  };
+  reader.readAsDataURL(file);
 }

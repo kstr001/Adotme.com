@@ -46,6 +46,18 @@
       <label>Espécie:</label>
       <input type="text" id="especiePet" required>
 
+      <label>Foto do Pet:</label>
+      <div id="dropArea" class="drop-area">
+        <p>Arraste uma imagem aqui ou clique para selecionar</p>
+        <input type="file" id="fotoPetInput" accept="image/*" hidden />
+        <img id="previewPetFoto" style="max-width: 100px; margin-top: 10px; display: none;" />
+      </div>
+
+      <label>Cidade:</label>
+      <input type="text" id="cidadePet" value="Curitiba" required> <label>Estado (UF):</label>
+      <input type="text" id="estadoPet" value="PR" maxlength="2" required> <label>CEP:</label>
+      <input type="text" id="cepPet" pattern="\d{5}-?\d{3}" placeholder="Ex: 80000-000" required>
+
       <label>Rua:</label>
       <input type="text" id="ruaPet" required>
 
@@ -55,10 +67,6 @@
       <label>Bairro:</label>
       <input type="text" id="bairroPet" required>
 
-      <label>Cidade:</label>
-      <input type="text" id="cidadePet" value="Curitiba" required> <label>Estado (UF):</label>
-      <input type="text" id="estadoPet" value="PR" maxlength="2" required> <label>CEP:</label>
-      <input type="text" id="cepPet" pattern="\d{5}-?\d{3}" placeholder="Ex: 80000-000" required>
       <label>Idade:</label>
       <input type="number" id="idadePet" required />
 

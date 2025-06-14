@@ -405,3 +405,14 @@ header h1 {
     align-self: flex-end; /* Alinha à direita */
     margin-left: auto;
 }
+
+.drop-area {
+  border: 2px dashed #ccc;
+  padding: 10px;
+  text-align: center;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.drop-area.highlight {
+  border-color: #6c6;
+}
