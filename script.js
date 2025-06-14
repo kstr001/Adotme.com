@@ -22,7 +22,7 @@ const modalCadastroCliente = document.getElementById("modalCadastroCliente");
 const fecharCadastroCliente = document.getElementById("fecharCadastroCliente");
 const listaPetsDiv = document.getElementById("listaPets");
 const emailLogin = document.getElementById("emailLogin");
-const senhaLogin = document = document.getElementById("senhaLogin");
+const senhaLogin = document.getElementById("senhaLogin");
 const loginForm = document.getElementById("loginForm");
 const cadastroClienteForm = document.getElementById("cadastroClienteForm");
 const cadastroPetForm = document.getElementById("cadastroPetForm");
@@ -160,8 +160,7 @@ loginForm.addEventListener("submit", async (e) => {
             console.log("Usuário logado:", data.user);
             localUsuarioAtual = data.user;
             localStorage.setItem("clienteLogadoEmail", data.user.email);
-            // ATENÇÃO: SUBSTITUA 'admin@example.com' PELO SEU EMAIL DE ADMINISTRADOR REAL
-            if (email === "admin@example.com") { 
+            if (email === "admin@example.com") { // EXATAMENTE O EMAIL DO SEU ADMIN
                 localStorage.setItem("logadoAdmin", "true");
             } else {
                 localStorage.removeItem("logadoAdmin");
@@ -269,9 +268,8 @@ async function renderizarPets() {
             <img src="${pet.foto_url}" alt="${pet.nome}" />
             ${
                 // Botão "Conversar com o Tutor" visível para clientes NÃO donos do pet
-                // Ou para o admin (admin pode iniciar conversa com qualquer dono de pet)
-                (clienteLogadoEmail && clienteLogadoEmail !== pet.dono_email) || isAdmin
-                    ? `<button class="chat-btn" data-pet-id="${pet.id}" data-pet-nome="${pet.nome}" data-dono-email="${pet.dono_email}">Conversar com o Tutor</button>`
+                clienteLogadoEmail && clienteLogadoEmail !== pet.dono_email
+                    ? `<button class="chat-btn" data-pet-id="${pet.id}" data-pet-nome="${pet.nome}">Conversar com o Tutor</button>`
                     : ""
             }
             ${
@@ -289,9 +287,7 @@ async function renderizarPets() {
         button.addEventListener("click", (event) => {
             currentPetId = event.target.dataset.petId; // Define o pet ID atual
             const petNome = event.target.dataset.petNome;
-            // Para o chat com o tutor, o nome do pet é o suficiente.
-            // Para conversas cliente-tutor, o sistema de remetente/destinatário vai resolver quem é quem.
-            chatPetNome.textContent = `Chat sobre ${petNome}`;
+            chatPetNome.textContent = `Chat com ${petNome}`;
             modalChat.classList.remove("hidden");
             modalChat.classList.add("active");
             renderizarMensagens(petNome); // Carrega as mensagens do chat
@@ -469,9 +465,8 @@ async function renderizarMensagens(petNome) {
         let usuarioVisualizadorEmail = null;
         if (clienteLogadoEmail) {
             usuarioVisualizadorEmail = clienteLogadoEmail;
-        } else if (isAdmin === "true") { 
-            // ATENÇÃO: SUBSTITUA 'admin@example.com' PELO SEU EMAIL DE ADMINISTRADOR REAL
-            usuarioVisualizadorEmail = "admin@example.com"; 
+        } else if (isAdmin === "true") { // Certifique-se que 'isAdmin' é uma string "true"
+            usuarioVisualizadorEmail = "admin@example.com"; // **IMPORTANTE**: Use o email exato do seu admin
         }
         
         console.log("Usuário visualizador atual:", usuarioVisualizadorEmail);
@@ -513,14 +508,13 @@ sendMessageBtn.addEventListener("click", async () => {
 
     const clienteLogadoEmail = localStorage.getItem("clienteLogadoEmail");
     const isAdmin = localStorage.getItem("logadoAdmin"); // String "true" ou null
-    const petNomeAtual = chatPetNome.textContent.replace("Chat sobre ", ""); // Ajuste no texto
+    const petNomeAtual = chatPetNome.textContent.replace("Chat com ", "").replace("Mensagens do seu pet: ", "");
 
     let remetenteParaSalvar = null;
     if (clienteLogadoEmail) {
         remetenteParaSalvar = clienteLogadoEmail;
     } else if (isAdmin === "true") {
-        // ATENÇÃO: SUBSTITUA 'admin@example.com' PELO SEU EMAIL DE ADMINISTRADOR REAL
-        remetenteParaSalvar = "admin@example.com"; 
+        remetenteParaSalvar = "admin@example.com"; // **IMPORTANTE**: Use o email exato do seu admin
     } else {
         alert("Você precisa estar logado para enviar mensagens.");
         return;
@@ -536,10 +530,10 @@ sendMessageBtn.addEventListener("click", async () => {
 
 // --- Lógica do Histórico de Conversas (Tutor/Admin) ---
 verConversasBtn.addEventListener("click", async () => {
-    const clienteEmailLogado = localStorage.getItem("clienteLogadoEmail");
+    const clienteEmail = localStorage.getItem("clienteLogadoEmail");
     const isAdmin = localStorage.getItem("logadoAdmin"); // String "true" ou null
 
-    if (!clienteEmailLogado && isAdmin !== "true") {
+    if (!clienteEmail && isAdmin !== "true") {
         alert("Você precisa estar logado como cliente ou administrador para ver as conversas.");
         return;
     }
@@ -557,11 +551,11 @@ verConversasBtn.addEventListener("click", async () => {
             if (error) throw new Error("Erro ao buscar todos os pets para admin: " + error.message);
             petsParaHistorico = data;
         } else {
-            // Se for cliente (tutor), buscar apenas os pets que pertencem ao cliente logado
+            // Se for cliente, buscar apenas os pets que pertencem ao cliente logado
             const { data, error } = await supabaseClient
                 .from('pets')
                 .select('id, nome, dono_email')
-                .eq('dono_email', clienteEmailLogado);
+                .eq('dono_email', clienteEmail);
             if (error) throw new Error("Erro ao buscar seus pets: " + error.message);
             petsParaHistorico = data;
         }
@@ -570,7 +564,6 @@ verConversasBtn.addEventListener("click", async () => {
             historicoMensagensContainer.innerHTML = "<p>Nenhuma conversa encontrada para seus pets ou para admin.</p>";
         } else {
             for (const pet of petsParaHistorico) {
-                // Buscar todas as mensagens para este pet
                 const { data: mensagensDoPet, error: mensagensError } = await supabaseClient
                     .from('mensagens_chat')
                     .select('*')
@@ -582,87 +575,30 @@ verConversasBtn.addEventListener("click", async () => {
                     continue; // Pula para o próximo pet se houver erro
                 }
 
-                const bloco = document.createElement("div");
-                bloco.classList.add("historico-bloco");
-                bloco.innerHTML = `<h3>Conversas sobre: ${pet.nome} (Dono: ${pet.dono_email})</h3>`;
-
                 if (mensagensDoPet.length > 0) {
-                    // Agrupar mensagens por remetente (cliente que iniciou a conversa)
-                    const conversasAgrupadas = {};
+                    const bloco = document.createElement("div");
+                    bloco.classList.add("historico-bloco");
+                    bloco.innerHTML = `<h3>Conversas sobre: ${pet.nome} (Dono: ${pet.dono_email})</h3>`;
+
                     mensagensDoPet.forEach(msg => {
-                        // Se o remetente não for o dono do pet nem o admin, ele é o "cliente"
-                        let outroParticipanteEmail = msg.remetente_email;
-                        if (msg.remetente_email === pet.dono_email || msg.remetente_email === "admin@example.com") {
-                            // Se a mensagem for do dono do pet ou admin, tentamos encontrar o outro participante (o cliente)
-                            const clientesNaConversa = mensagensDoPet.filter(m => 
-                                m.remetente_email !== pet.dono_email && m.remetente_email !== "admin@example.com"
-                            ).map(m => m.remetente_email);
-                            
-                            // Pegamos o primeiro cliente encontrado (poderia ter mais lógica se houvesse múltiplos clientes conversando sobre o mesmo pet)
-                            outroParticipanteEmail = clientesNaConversa.length > 0 ? clientesNaConversa[0] : "Desconhecido";
-
-                        }
-
-                        if (!conversasAgrupadas[outroParticipanteEmail]) {
-                            conversasAgrupadas[outroParticipanteEmail] = [];
-                        }
-                        conversasAgrupadas[outroParticipanteEmail].push(msg);
+                        const linha = document.createElement("p");
+                        const remetenteDisplay = msg.remetente_email === clienteEmail ? "Você" : 
+                                                 (msg.remetente_email === "admin@example.com" ? "Administrador" : msg.remetente_email);
+                        linha.innerHTML = `<strong>${remetenteDisplay}:</strong> ${msg.conteudo} <em>(${new Date(msg.created_at).toLocaleString()})</em>`;
+                        bloco.appendChild(linha);
                     });
-
-                    for (const [participante, msgs] of Object.entries(conversasAgrupadas)) {
-                        const subBlocoConversa = document.createElement("div");
-                        subBlocoConversa.classList.add("conversa-individual");
-                        
-                        // Mostra o email do participante para o tutor/admin
-                        subBlocoConversa.innerHTML = `<h4>Conversa com: ${participante}</h4>`;
-                        
-                        msgs.forEach(msg => {
-                            const linha = document.createElement("p");
-                            const remetenteDisplay = msg.remetente_email === clienteEmailLogado ? "Você" : 
-                                                     (msg.remetente_email === "admin@example.com" ? "Administrador" : msg.remetente_email);
-                            linha.innerHTML = `<strong>${remetenteDisplay}:</strong> ${msg.conteudo} <em>(${new Date(msg.created_at).toLocaleString()})</em>`;
-                            subBlocoConversa.appendChild(linha);
-                        });
-
-                        // Botão de responder para o tutor/admin
-                        if (clienteEmailLogado === pet.dono_email || isAdmin === "true") {
-                            const responderBtn = document.createElement("button");
-                            responderBtn.classList.add("responder-btn");
-                            responderBtn.textContent = `Responder a ${participante}`;
-                            responderBtn.dataset.petId = pet.id;
-                            responderBtn.dataset.petNome = pet.nome;
-                            responderBtn.dataset.clienteEmail = participante; // Salva o email do cliente para o chat
-                            subBlocoConversa.appendChild(responderBtn);
-                        }
-
-                        bloco.appendChild(subBlocoConversa);
-                    }
+                    historicoMensagensContainer.appendChild(bloco);
                 } else {
-                    bloco.innerHTML += `<p>Nenhuma mensagem ainda sobre este pet.</p>`;
+                    const bloco = document.createElement("div");
+                    bloco.classList.add("historico-bloco");
+                    bloco.innerHTML = `<h3>Conversas sobre: ${pet.nome} (Dono: ${pet.dono_email})</h3><p>Nenhuma mensagem ainda.</p>`;
+                    historicoMensagensContainer.appendChild(bloco);
                 }
-                historicoMensagensContainer.appendChild(bloco);
             }
         }
 
         modalHistorico.classList.remove("hidden");
         modalHistorico.classList.add("active");
-
-        // Adiciona event listeners para os novos botões "Responder"
-        document.querySelectorAll(".responder-btn").forEach(button => {
-            button.addEventListener("click", (event) => {
-                currentPetId = event.target.dataset.petId;
-                const petNome = event.target.dataset.petNome;
-                const clienteEmailParaChat = event.target.dataset.clienteEmail;
-                
-                // Abre o modal de chat
-                chatPetNome.textContent = `Chat sobre ${petNome} com ${clienteEmailParaChat.split('@')[0]}`;
-                modalHistorico.classList.remove("active"); // Fecha o histórico
-                modalHistorico.classList.add("hidden");
-                modalChat.classList.remove("hidden");
-                modalChat.classList.add("active");
-                renderizarMensagens(petNome); // Recarrega o chat para o pet selecionado
-            });
-        });
 
     } catch (error) {
         console.error("Erro ao carregar histórico de conversas:", error);
@@ -704,6 +640,10 @@ function atualizarMapaComPets(pets) {
 
 // Simula a obtenção de coordenadas de uma localização (substitua por API de geocodificação real)
 async function obterCoordenadasDaLocalizacao(localizacao) {
+    // Esta é uma implementação SIMPLIFICADA para fins de demonstração.
+    // Em um ambiente de produção, você usaria uma API de geocodificação
+    // como OpenCage, Google Geocoding API, etc.
+    // Exemplo usando uma API pública (limitada para produção): Nominatim (OpenStreetMap)
     try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(localizacao)}`);
         const data = await response.json();
