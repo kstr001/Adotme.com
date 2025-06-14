@@ -1,3 +1,18 @@
+const SUPABASE_URL = "https://ymfmlqzwnzmtuvuhavbt.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZm1scXp3bnptdHV2dWhhdmJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4OTM4ODksImV4cCI6MjA2NTQ2OTg4OX0.eimoL0JlSCxHAnrfl5WwwiOnvJznBxh-FFQYl7NSKFb";
+
+// --- Inicialização do Supabase Client (melhor prática) ---
+// É uma boa prática inicializar o cliente Supabase para ter acesso a métodos mais completos,
+// como signInWithPassword, signUp, etc.
+// Certifique-se de ter a biblioteca Supabase JS SDK incluída no seu HTML:
+// <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+const { createClient } = supabase;
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let petsArray = []; // Vai armazenar os pets carregados do Supabase
+let localUsuarioAtual = null;
+const RAIO_FILTRO_KM = 300;
+
 // --- Modal de Cadastro de Pet ---
 const cadastroBtn = document.getElementById("cadastroPetBtn");
 const modalCadastro = document.getElementById("modalCadastro");
@@ -19,12 +34,20 @@ const modalLogin = document.getElementById("modalLogin");
 const fecharLogin = document.getElementById("fecharLogin");
 const loginForm = document.getElementById("loginForm");
 
-loginBtn.addEventListener("click", () => {
+loginBtn.addEventListener("click", async () => { // Adicionado 'async'
     if (localStorage.getItem("logadoAdmin") || localStorage.getItem("logadoCliente")) {
-        localStorage.removeItem("logadoAdmin");
-        localStorage.removeItem("logadoCliente");
-        localStorage.removeItem("clienteLogadoEmail");
-        atualizarEstadoLogin();
+        // Lógica de logout para Supabase (assumindo que você usará auth.signOut)
+        const { error } = await supabaseClient.auth.signOut();
+        if (error) {
+            console.error("Erro ao fazer logout:", error.message);
+            alert("Erro ao fazer logout.");
+        } else {
+            localStorage.removeItem("logadoAdmin");
+            localStorage.removeItem("logadoCliente");
+            localStorage.removeItem("clienteLogadoEmail");
+            atualizarEstadoLogin();
+            alert("Logout realizado com sucesso!");
+        }
     } else {
         modalLogin.classList.remove("hidden");
         modalLogin.classList.add("active");
@@ -36,12 +59,13 @@ fecharLogin.addEventListener("click", () => {
     modalLogin.classList.add("hidden");
 });
 
-loginForm.addEventListener("submit", (e) => {
+loginForm.addEventListener("submit", async (e) => { // Adicionado 'async'
     e.preventDefault();
 
     const email = loginForm.email.value;
     const senha = loginForm.senha.value;
 
+    // Login de Administrador (ainda hardcoded, considere usar o Supabase Auth para admins também)
     if (email === "usuario@email.com" && senha === "1234") {
         localStorage.setItem("logadoAdmin", "true");
         localStorage.removeItem("logadoCliente");
@@ -53,19 +77,22 @@ loginForm.addEventListener("submit", (e) => {
         return;
     }
 
-    const clientes = JSON.parse(localStorage.getItem("clientes") || "[]");
-    const clienteEncontrado = clientes.find(cliente => cliente.email === email && cliente.senha === senha);
+    // Login de Cliente via Supabase Auth
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: senha,
+    });
 
-    if (clienteEncontrado) {
+    if (error) {
+        alert("Credenciais inválidas ou erro ao fazer login: " + error.message);
+    } else {
         localStorage.setItem("logadoCliente", "true");
-        localStorage.setItem("clienteLogadoEmail", clienteEncontrado.email);
+        localStorage.setItem("clienteLogadoEmail", data.user.email);
         localStorage.removeItem("logadoAdmin");
         modalLogin.classList.remove("active");
         modalLogin.classList.add("hidden");
         atualizarEstadoLogin();
-        alert(`Bem-vindo(a), ${clienteEncontrado.nome}!`);
-    } else {
-        alert("Credenciais inválidas. Verifique seu e-mail e senha.");
+        alert(`Bem-vindo(a), ${data.user.email}!`); // Supabase não retorna 'nome' por padrão no auth
     }
 });
 
@@ -85,7 +112,7 @@ fecharCadastroCliente.addEventListener("click", () => {
     modalCadastroCliente.classList.add("hidden");
 });
 
-formCadastroCliente.addEventListener("submit", (e) => {
+formCadastroCliente.addEventListener("submit", async (e) => { // Adicionado 'async'
     e.preventDefault();
 
     const nome = document.getElementById("nomeCliente").value;
@@ -97,57 +124,62 @@ formCadastroCliente.addEventListener("submit", (e) => {
         alert("As senhas não coincidem! Por favor, digite a mesma senha nos dois campos.");
         return;
     }
-    if (senha.length < 4) {
-        alert("A senha deve ter pelo menos 4 caracteres.");
+    if (senha.length < 6) { // Supabase Auth geralmente exige 6 caracteres mínimos
+        alert("A senha deve ter pelo menos 6 caracteres.");
         return;
     }
 
-    const clientes = JSON.parse(localStorage.getItem("clientes") || "[]");
-    const emailJaExiste = clientes.some(cliente => cliente.email === email);
-    if (emailJaExiste) {
-        alert("Este e-mail já está cadastrado. Por favor, use outro.");
-        return;
-    }
-
-    const novoCliente = {
-        nome: nome,
+    // Cadastro de Cliente via Supabase Auth
+    const { data, error } = await supabaseClient.auth.signUp({
         email: email,
-        senha: senha
-    };
+        password: senha,
+        options: {
+            data: {
+                nome: nome // Envia o nome como metadata do usuário, se necessário
+            }
+        }
+    });
 
-    clientes.push(novoCliente);
-    localStorage.setItem("clientes", JSON.stringify(clientes));
-
-    alert("Cadastro realizado com sucesso! Agora você pode fazer login.");
-    formCadastroCliente.reset();
-    modalCadastroCliente.classList.remove("active");
-    modalCadastroCliente.classList.add("hidden");
+    if (error) {
+        alert("Erro ao cadastrar: " + error.message);
+    } else {
+        // Se o Supabase Auth for configurado para confirmação de e-mail, pode ser necessário alertar o usuário
+        if (data.user && data.user.identities && data.user.identities.length > 0) {
+            alert("Cadastro realizado com sucesso! Verifique seu e-mail para confirmar a conta.");
+        } else {
+            alert("Cadastro realizado com sucesso! Agora você pode fazer login.");
+        }
+        formCadastroCliente.reset();
+        modalCadastroCliente.classList.remove("active");
+        modalCadastroCliente.classList.add("hidden");
+    }
 });
 
 // --- Função para atualizar o estado do botão de login/cadastro ---
-function atualizarEstadoLogin() {
-    const logadoAdmin = localStorage.getItem("logadoAdmin");
-    const logadoCliente = localStorage.getItem("logadoCliente");
-    const clienteEmail = localStorage.getItem("clienteLogadoEmail");
+async function atualizarEstadoLogin() {
+    const { data: { user } } = await supabaseClient.auth.getUser(); // Obtém o usuário logado via Supabase Auth
 
-    if (logadoAdmin) {
+    if (localStorage.getItem("logadoAdmin")) { // Lógica de admin hardcoded
         loginBtn.textContent = "Sair";
-        cadastroBtn.style.display = "inline-block";
-        cadastroClienteBtn.style.display = "none";
-    } else if (logadoCliente) {
-        const clientes = JSON.parse(localStorage.getItem("clientes") || "[]");
-        const clienteAtual = clientes.find(c => c.email === clienteEmail);
-        loginBtn.textContent = `Olá, ${clienteAtual ? clienteAtual.nome.split(' ')[0] : 'Cliente'} (Sair)`;
+        cadastroBtn.style.display = "inline-block"; // Botão de cadastro de pet
+        cadastroClienteBtn.style.display = "none"; // Botão de cadastro de cliente
+    } else if (user) { // Usuário logado via Supabase Auth
+        localStorage.setItem("logadoCliente", "true");
+        localStorage.setItem("clienteLogadoEmail", user.email); // Armazena o e-mail do usuário logado
+        // Tenta pegar o nome dos metadados do usuário, se foi salvo
+        const userName = user.user_metadata && user.user_metadata.nome ? user.user_metadata.nome.split(' ')[0] : 'Cliente';
+        loginBtn.textContent = `Olá, ${userName} (Sair)`;
         cadastroBtn.style.display = "inline-block"; // Cliente também pode cadastrar pet
         cadastroClienteBtn.style.display = "none";
-    } else {
+    } else { // Ninguém logado
+        localStorage.removeItem("logadoAdmin");
+        localStorage.removeItem("logadoCliente");
+        localStorage.removeItem("clienteLogadoEmail");
         loginBtn.textContent = "Entrar";
-        cadastroBtn.style.display = "none";
-        cadastroClienteBtn.style.display = "inline-block";
+        cadastroBtn.style.display = "none"; // Esconde o botão de cadastro de pet se não estiver logado
+        cadastroClienteBtn.style.display = "inline-block"; // Mostra o botão de cadastro de cliente
     }
 }
-
-atualizarEstadoLogin();
 
 // --- Configuração do Mapa Leaflet ---
 const mapa = L.map('map').setView([-25.4284, -49.2733], 12); // Curitiba, PR
@@ -155,34 +187,6 @@ const mapa = L.map('map').setView([-25.4284, -49.2733], 12); // Curitiba, PR
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: 'Map data © OpenStreetMap contributors'
 }).addTo(mapa);
-
-// --- Dados Iniciais de Pets ---
-const petsIniciais = [
-    {
-        nome: "Rex",
-        especie: "Cachorro",
-        rua: "Rua das Flores",
-        numero: "100",
-        bairro: "Centro",
-        cidade: "Curitiba",
-        estado: "PR",
-        cep: "80000-000",
-        local: [-25.4305, -49.2707], // Coordenadas para Rex (centro da região)
-        idade: 1
-    },
-    {
-        nome: "Mimi",
-        especie: "Gata",
-        rua: "Avenida da Paz",
-        numero: "50",
-        bairro: "Jardim América",
-        cidade: "Curitiba",
-        estado: "PR",
-        cep: "80000-000",
-        local: [-25.4270, -49.2735], // Coordenadas para Mimi
-        idade: 2
-    }
-];
 
 // --- Função para calcular distância entre dois pontos (Haversine) ---
 function calcularDistancia(lat1, lon1, lat2, lon2) {
@@ -198,51 +202,69 @@ function calcularDistancia(lat1, lon1, lat2, lon2) {
     return distancia;
 }
 
-// --- Gerenciamento de Pets Salvos no LocalStorage ---
-function carregarPets() {
-    const petsSalvos = localStorage.getItem("pets");
-    if (petsSalvos) {
-        return JSON.parse(petsSalvos);
+// --- Gerenciamento de Pets Salvos no Supabase ---
+async function buscarPetsDoSupabase() {
+    try {
+        const { data, error } = await supabaseClient
+            .from('pets') // Nome da sua tabela de pets no Supabase
+            .select('*');
+
+        if (error) {
+            throw new Error("Erro ao buscar pets no Supabase: " + error.message);
+        }
+        return data.map(pet => ({
+            ...pet,
+            local: pet.local ? pet.local.split(',').map(Number) : null // Converte a string "lat,lon" de volta para array [lat, lon]
+        }));
+    } catch (err) {
+        console.error(err);
+        alert("Erro ao carregar pets do banco de dados.");
+        return [];
     }
-    return petsIniciais;
 }
-
-function salvarPets(petsArray) {
-    localStorage.setItem("pets", JSON.stringify(petsArray));
-}
-
-let petsArray = carregarPets();
-let localUsuarioAtual = null;
-const RAIO_FILTRO_KM = 300; // Define o raio de 300 km para filtragem
 
 // --- Geolocalização e Inicialização do Mapa com Filtro ---
-if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition((pos) => {
-        localUsuarioAtual = [pos.coords.latitude, pos.coords.longitude];
-        mapa.setView(localUsuarioAtual, 9);
-        
-        const petsFiltrados = filtrarPetsPorRaio(petsArray, localUsuarioAtual, RAIO_FILTRO_KM);
-        atualizarMarcadoresMapa(petsFiltrados, localUsuarioAtual);
-        atualizarListaPets(petsFiltrados);
-        
-    }, () => {
-        alert("Não foi possível obter sua localização. Exibindo pets em um raio de Curitiba.");
-        localUsuarioAtual = [-25.4284, -49.2733];
-        mapa.setView(localUsuarioAtual, 9);
-        
-        const petsFiltrados = filtrarPetsPorRaio(petsArray, localUsuarioAtual, RAIO_FILTRO_KM);
-        atualizarMarcadoresMapa(petsFiltrados, localUsuarioAtual);
-        atualizarListaPets(petsFiltrados);
-    });
-} else {
-    alert("Geolocalização não suportada pelo navegador. Exibindo pets em um raio de Curitiba.");
-    localUsuarioAtual = [-25.4284, -49.2733];
-    mapa.setView(localUsuarioAtual, 9);
+async function initializeMapAndPets() { // Transformado em async
+    try {
+        petsArray = await buscarPetsDoSupabase(); // Carrega os pets do Supabase
 
-    const petsFiltrados = filtrarPetsPorRaio(petsArray, localUsuarioAtual, RAIO_FILTRO_KM);
-    atualizarMarcadoresMapa(petsFiltrados, localUsuarioAtual);
-    atualizarListaPets(petsFiltrados);
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+                localUsuarioAtual = [pos.coords.latitude, pos.coords.longitude];
+                mapa.setView(localUsuarioAtual, 9);
+
+                const petsFiltrados = filtrarPetsPorRaio(petsArray, localUsuarioAtual, RAIO_FILTRO_KM);
+                atualizarMarcadoresMapa(petsFiltrados, localUsuarioAtual);
+                atualizarListaPets(petsFiltrados);
+
+            }, () => {
+                alert("Não foi possível obter sua localização. Exibindo pets em um raio de Curitiba.");
+                localUsuarioAtual = [-25.4284, -49.2733];
+                mapa.setView(localUsuarioAtual, 9);
+
+                const petsFiltrados = filtrarPetsPorRaio(petsArray, localUsuarioAtual, RAIO_FILTRO_KM);
+                atualizarMarcadoresMapa(petsFiltrados, localUsuarioAtual);
+                atualizarListaPets(petsFiltrados);
+            });
+        } else {
+            alert("Geolocalização não suportada pelo navegador. Exibindo pets em um raio de Curitiba.");
+            localUsuarioAtual = [-25.4284, -49.2733];
+            mapa.setView(localUsuarioAtual, 9);
+
+            const petsFiltrados = filtrarPetsPorRaio(petsArray, localUsuarioAtual, RAIO_FILTRO_KM);
+            atualizarMarcadoresMapa(petsFiltrados, localUsuarioAtual);
+            atualizarListaPets(petsFiltrados);
+        }
+    } catch (error) {
+        console.error("Erro na inicialização do mapa e pets:", error);
+        alert("Ocorreu um erro ao carregar os dados. Tente novamente.");
+    }
+    atualizarEstadoLogin(); // Garante que o estado do login seja atualizado após carregar pets
 }
+
+// Chamar a função de inicialização
+initializeMapAndPets();
+
 
 // --- Função: Filtrar pets por raio de distância ---
 function filtrarPetsPorRaio(pets, userLocation, raioKm) {
@@ -258,13 +280,12 @@ function filtrarPetsPorRaio(pets, userLocation, raioKm) {
     });
 }
 
-
 // --- Função para geocodificar o endereço usando Nominatim ---
 async function geocodeAddress(rua, numero, bairro, cidade, estado, cep) {
     const query = `${numero} ${rua}, ${bairro}, ${cidade}, ${estado}, ${cep}, Brasil`;
     // ATENÇÃO: Substitua 'seu.email@exemplo.com' pelo seu e-mail real para uso do Nominatim.
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&email=seu.email@exemplo.com`;
-    
+
     try {
         const response = await fetch(url);
         const data = await response.json();
@@ -313,8 +334,8 @@ function atualizarMarcadoresMapa(currentPetsArray, userLocation) {
                 fillOpacity: 0.3,
                 radius: 500 // Raio do círculo em metros (500m)
             })
-            .addTo(mapa)
-            .bindPopup(popupText);
+                .addTo(mapa)
+                .bindPopup(popupText);
         } else {
             console.warn(`Pet ${pet.nome} não possui coordenadas válidas para exibição no mapa.`);
         }
@@ -391,50 +412,68 @@ formCadastroPet.addEventListener("submit", async (e) => {
         return;
     }
 
-    alert("Buscando coordenadas para o endereço... Por favor, aguarde.");
-    const coordenadas = await geocodeAddress(rua, numero, bairro, cidade, estado, cep);
-
-    if (!coordenadas) {
-        alert("Não foi possível encontrar as coordenadas para o endereço fornecido. Por favor, verifique o endereço e tente novamente.");
+    const donoEmail = localStorage.getItem("clienteLogadoEmail"); // Obtém o email do dono logado
+    if (!donoEmail) {
+        alert("Você precisa estar logado como cliente para cadastrar um pet.");
         return;
     }
 
-const donoEmail = localStorage.getItem("clienteLogadoEmail") || null;
-if (!donoEmail) {
-    alert("Você precisa estar logado como cliente para cadastrar um pet.");
-    return;
-}
+    alert("Buscando coordenadas para o endereço... Por favor, aguarde.");
+    const coordenadas = await geocodeAddress(rua, numero, bairro, cidade, estado, cep);
+    if (!coordenadas) {
+        alert("Não foi possível encontrar as coordenadas para o endereço fornecido.");
+        return;
+    }
 
-const novoPet = {
-    nome,
-    especie,
-    idade,
-    rua,
-    numero,
-    bairro,
-    cidade,
-    estado,
-    cep,
-    local: coordenadas,
-    dono: donoEmail, // ← adicione essa vírgula aqui!
-    foto: imagemBase64
-};
+    const localString = coordenadas.join(','); // Armazena como string "lat,lon"
 
-    petsArray.push(novoPet);
-    salvarPets(petsArray);
-    
-    const petsFiltradosAposCadastro = filtrarPetsPorRaio(petsArray, localUsuarioAtual, RAIO_FILTRO_KM);
-    atualizarMarcadoresMapa(petsFiltradosAposCadastro, localUsuarioAtual);
-    atualizarListaPets(petsFiltradosAposCadastro);
+    const novoPet = {
+        nome,
+        especie,
+        idade,
+        rua,
+        numero,
+        bairro,
+        cidade,
+        estado,
+        cep,
+        local: localString, // Envia a string "lat,lon" para o Supabase
+        dono_email: donoEmail, // Use dono_email, que é o nome da coluna no seu DB
+        foto: imagemBase64 // Se você tiver uma coluna 'foto' para armazenar base64
+    };
 
-    formCadastroPet.reset();
-    document.getElementById("cidadePet").value = "Curitiba";
-    document.getElementById("estadoPet").value = "PR";
+    try {
+        const { data, error } = await supabaseClient
+            .from('pets') // Nome da sua tabela de pets no Supabase
+            .insert([novoPet])
+            .select(); // Retorna o registro inserido
 
-    modalCadastro.classList.remove("active");
-    modalCadastro.classList.add("hidden");
-    alert("Pet cadastrado com sucesso!");
+        if (error) {
+            throw new Error("Erro ao salvar pet: " + error.message);
+        }
+
+        alert("Pet cadastrado com sucesso no Supabase!");
+
+        // Resetar o formulário visual
+        formCadastroPet.reset();
+        previewImg.style.display = "none";
+        imagemBase64 = "";
+
+        modalCadastro.classList.remove("active");
+        modalCadastro.classList.add("hidden");
+
+        // Recarrega a lista de pets e atualiza o mapa após o cadastro
+        petsArray = await buscarPetsDoSupabase();
+        const petsFiltrados = filtrarPetsPorRaio(petsArray, localUsuarioAtual, RAIO_FILTRO_KM);
+        atualizarMarcadoresMapa(petsFiltrados, localUsuarioAtual);
+        atualizarListaPets(petsFiltrados);
+
+    } catch (error) {
+        console.error(error);
+        alert(error.message);
+    }
 });
+
 
 // --- Modal de Chat - Novas constantes e lógica ---
 const modalChat = document.getElementById("modalChat");
@@ -448,7 +487,6 @@ const sendMessageBtn = document.getElementById("sendMessageBtn");
 fecharChatBtn.addEventListener("click", () => {
     modalChat.classList.remove("active");
     modalChat.classList.add("hidden");
-    // REMOVIDA A LINHA: chatMessages.innerHTML = ``; // Esta linha não existe mais
     chatMessageInput.value = "";
 });
 
@@ -499,13 +537,13 @@ function atualizarListaPets(currentPetsArray) {
         return;
     }
 
-    currentPetsArray.forEach((pet, index) => {
+    currentPetsArray.forEach((pet) => { // Removido 'index' pois não será mais usado para exclusão direta
         const card = document.createElement("div");
         card.classList.add("card-pet");
-        card.dataset.petIndex = index; 
+        card.dataset.petId = pet.id; // Usar o ID do Supabase para identificação
 
         const clienteEmail = localStorage.getItem("clienteLogadoEmail");
-        const isDono = clienteEmail && pet.dono === clienteEmail;
+        const isDono = clienteEmail && pet.dono_email === clienteEmail; // Verifica pelo dono_email do DB
 
         card.innerHTML = `
             <img src="${pet.foto || 'https://via.placeholder.com/150'}" alt="${pet.nome} para adoção" />
@@ -513,7 +551,7 @@ function atualizarListaPets(currentPetsArray) {
             <p>Espécie: ${pet.especie}</p>
             <p>Idade: ${pet.idade !== undefined && pet.idade !== null ? pet.idade + " anos" : "não informada"}</p>
             <button class="chat-pet-btn" data-pet-nome="${pet.nome}">Conversar com o Tutor</button>
-            ${isDono ? `<button class="excluir-pet-btn" data-pet-index="${index}">Excluir</button>` : ""}
+            ${isDono ? `<button class="excluir-pet-btn" data-pet-id="${pet.id}">Excluir</button>` : ""}
         `;
         lista.appendChild(card);
     });
@@ -521,7 +559,7 @@ function atualizarListaPets(currentPetsArray) {
     document.querySelectorAll(".chat-pet-btn").forEach(button => {
         button.addEventListener("click", (e) => {
             const petNome = e.target.dataset.petNome;
-            renderizarMensagens(petNome); 
+            renderizarMensagens(petNome);
 
             chatPetNome.textContent = `Chat com ${petNome}`;
             modalChat.classList.remove("hidden");
@@ -529,21 +567,39 @@ function atualizarListaPets(currentPetsArray) {
             chatMessages.scrollTop = chatMessages.scrollHeight;
         });
     });
+
+    // Event listener para excluir pet via Supabase
     document.querySelectorAll(".excluir-pet-btn").forEach(button => {
-        button.addEventListener("click", (e) => {
-            const index = parseInt(e.target.dataset.petIndex);
+        button.addEventListener("click", async (e) => { // Adicionado 'async'
+            const petId = e.target.dataset.petId;
 
             if (confirm("Tem certeza que deseja excluir este pet?")) {
-                petsArray.splice(index, 1); // remove da lista
-                salvarPets(petsArray);      // salva no localStorage
+                try {
+                    const { error } = await supabaseClient
+                        .from('pets')
+                        .delete()
+                        .eq('id', petId); // Exclui pelo ID do pet
 
-                const petsFiltrados = filtrarPetsPorRaio(petsArray, localUsuarioAtual, RAIO_FILTRO_KM);
-                atualizarMarcadoresMapa(petsFiltrados, localUsuarioAtual);
-                atualizarListaPets(petsFiltrados);
+                    if (error) {
+                        throw new Error("Erro ao excluir pet do Supabase: " + error.message);
+                    }
+
+                    alert("Pet excluído com sucesso!");
+                    // Recarrega a lista e o mapa após a exclusão
+                    petsArray = await buscarPetsDoSupabase();
+                    const petsFiltrados = filtrarPetsPorRaio(petsArray, localUsuarioAtual, RAIO_FILTRO_KM);
+                    atualizarMarcadoresMapa(petsFiltrados, localUsuarioAtual);
+                    atualizarListaPets(petsFiltrados);
+
+                } catch (error) {
+                    console.error(error);
+                    alert(error.message);
+                }
             }
         });
     });
 }
+
 function salvarMensagem(petNome, remetente, conteudo) {
     const mensagens = JSON.parse(localStorage.getItem("mensagensChat") || "[]");
     mensagens.push({ pet: petNome, remetente, conteudo, data: new Date().toISOString() });
@@ -566,6 +622,7 @@ function renderizarMensagens(petNome) {
             addMessageToChat(msg.conteudo, tipo);
         });
 }
+
 const dropArea = document.getElementById("dropArea");
 const inputFile = document.getElementById("fotoPetInput");
 const previewImg = document.getElementById("previewPetFoto");
@@ -576,30 +633,30 @@ dropArea.addEventListener("click", () => inputFile.click());
 inputFile.addEventListener("change", handleFiles);
 
 dropArea.addEventListener("dragover", (e) => {
-  e.preventDefault();
-  dropArea.classList.add("highlight");
+    e.preventDefault();
+    dropArea.classList.add("highlight");
 });
 
 dropArea.addEventListener("dragleave", () => {
-  dropArea.classList.remove("highlight");
+    dropArea.classList.remove("highlight");
 });
 
 dropArea.addEventListener("drop", (e) => {
-  e.preventDefault();
-  dropArea.classList.remove("highlight");
-  const files = e.dataTransfer.files;
-  if (files.length) handleFiles({ target: { files } });
+    e.preventDefault();
+    dropArea.classList.remove("highlight");
+    const files = e.dataTransfer.files;
+    if (files.length) handleFiles({ target: { files } });
 });
 
 function handleFiles(e) {
-  const file = e.target.files[0];
-  if (!file) return;
+    const file = e.target.files[0];
+    if (!file) return;
 
-  const reader = new FileReader();
-  reader.onload = () => {
-    imagemBase64 = reader.result;
-    previewImg.src = imagemBase64;
-    previewImg.style.display = "block";
-  };
-  reader.readAsDataURL(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+        imagemBase64 = reader.result;
+        previewImg.src = imagemBase64;
+        previewImg.style.display = "block";
+    };
+    reader.readAsDataURL(file);
 }
