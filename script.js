@@ -642,45 +642,63 @@ async function salvarMensagem(petId, remetente, conteudo) { // Agora 'async' e r
     }
 }
 
-async function renderizarMensagens(petNome) { // Agora 'async'
+async function renderizarMensagens(petNome) {
     chatMessages.innerHTML = ""; // Limpa antes de adicionar
 
     const petEncontrado = petsArray.find(p => p.nome === petNome);
     if (!petEncontrado) {
-        console.error("Pet não encontrado:", petNome);
+        console.error("Erro: Pet não encontrado para o chat:", petNome);
         return;
     }
-    const petId = petEncontrado.id; // Obtenha o ID do pet
+    const petId = petEncontrado.id;
+    const donoPetEmail = petEncontrado.dono_email; // O email do dono do pet
 
     try {
         const { data: mensagens, error } = await supabaseClient
             .from('mensagens_chat')
             .select('*')
-            .eq('pet_id', petId) // Filtra as mensagens pelo ID do pet
-            .order('created_at', { ascending: true }); // Ordena pela data para exibir na ordem correta
+            .eq('pet_id', petId)
+            .order('created_at', { ascending: true });
 
         if (error) {
             throw new Error("Erro ao buscar mensagens no Supabase: " + error.message);
         }
 
-        const clienteEmail = localStorage.getItem("clienteLogadoEmail");
+        const clienteLogadoEmail = localStorage.getItem("clienteLogadoEmail");
         const isAdmin = localStorage.getItem("logadoAdmin");
 
-        let usuarioLogadoNoMomento = null;
-        if (clienteEmail) {
-            usuarioLogadoNoMomento = clienteEmail;
+        // Determine a identidade do usuário atualmente logado
+        let remetenteAtualIdentidade;
+        if (clienteLogadoEmail) {
+            remetenteAtualIdentidade = clienteLogadoEmail;
         } else if (isAdmin) {
-            usuarioLogadoNoMomento = "admin";
+            remetenteAtualIdentidade = "admin"; // Ou um email específico para o admin, se tiver
+        } else {
+            remetenteAtualIdentidade = "deslogado"; // Ninguém logado, não deveria estar no chat
         }
 
         mensagens.forEach(msg => {
             let tipo;
-            if (msg.remetente_email === usuarioLogadoNoMomento) { // Use 'remetente_email' da DB
+            // Se o remetente da mensagem é o usuário que está logado AGORA
+            if (msg.remetente_email === remetenteAtualIdentidade) {
                 tipo = "sent";
-            } else {
+            }
+            // Se o usuário logado AGORA é o dono do pet E a mensagem foi enviada por um NÃO-DONO
+            else if (clienteLogadoEmail === donoPetEmail && msg.remetente_email !== donoPetEmail) {
                 tipo = "received";
             }
-            addMessageToChat(msg.conteudo, tipo);
+            // Se o usuário logado AGORA NÃO é o dono do pet E a mensagem foi enviada pelo dono do pet
+            else if (clienteLogadoEmail !== donoPetEmail && msg.remetente_email === donoPetEmail) {
+                tipo = "received";
+            }
+            // Caso admin, ou outras situações. Isso pode precisar de ajuste dependendo de quem pode "ver" o que.
+            else if (isAdmin && msg.remetente_email !== "admin") {
+                tipo = "received"; // Admin vê outras mensagens como recebidas
+            }
+            else {
+                tipo = "unknown"; // Caso padrão, para depuração
+            }
+            addMessageToChat(`${msg.conteudo} (${new Date(msg.created_at).toLocaleTimeString()})`, tipo);
         });
 
         chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -744,75 +762,92 @@ document.addEventListener("click", (e) => {
   }
 });
 
-function mostrarMensagensDoTutor(petNome) {
-  const mensagens = JSON.parse(localStorage.getItem("mensagensChat") || "[]");
-  const mensagensDoPet = mensagens.filter(msg => msg.pet === petNome);
-
-  const agrupadasPorUsuario = mensagensDoPet.reduce((acc, msg) => {
-    if (msg.remetente !== "admin") {
-      if (!acc[msg.remetente]) acc[msg.remetente] = [];
-      acc[msg.remetente].push(msg);
-    }
-    return acc;
-  }, {});
-
-  listaMensagensRecebidas.innerHTML = "";
-  for (const [usuario, msgs] of Object.entries(agrupadasPorUsuario)) {
-    const div = document.createElement("div");
-    div.innerHTML = `<h4>${usuario}</h4><ul>` +
-      msgs.map(m => `<li>${new Date(m.data).toLocaleString()}: ${m.conteudo}</li>`).join("") +
-      `</ul>`;
-    listaMensagensRecebidas.appendChild(div);
-  }
-
-  document.getElementById("tituloHistoricoChat").textContent = `Mensagens para ${petNome}`;
-  modalHistoricoChat.classList.remove("hidden");
-  modalHistoricoChat.classList.add("active");
-}
-
 const modalHistorico = document.getElementById("modalHistorico");
 const fecharHistorico = document.getElementById("fecharHistorico");
 const historicoMensagensContainer = document.getElementById("historicoMensagensContainer");
+const verConversasBtn = document.getElementById("verConversasBtn"); // Certifique-se de que esta constante existe e está visível
 
-verConversasBtn.addEventListener("click", () => {
-  const mensagens = JSON.parse(localStorage.getItem("mensagensChat") || "[]");
-  const clienteEmail = localStorage.getItem("clienteLogadoEmail");
-  const petsDoTutor = petsArray.filter(pet => pet.dono === clienteEmail).map(p => p.nome);
+verConversasBtn.addEventListener("click", async () => { // Tornar async
+    const clienteEmail = localStorage.getItem("clienteLogadoEmail");
+    if (!clienteEmail) {
+        alert("Você precisa estar logado para ver suas conversas.");
+        return;
+    }
 
-  const mensagensDoTutor = mensagens.filter(msg => petsDoTutor.includes(msg.pet));
+    try {
+        // Buscar apenas os pets que pertencem ao cliente logado
+        const { data: petsDoTutor, error: petsError } = await supabaseClient
+            .from('pets')
+            .select('id, nome, dono_email')
+            .eq('dono_email', clienteEmail); // Filtrar pelos pets do dono logado
 
-  if (mensagensDoTutor.length === 0) {
-    historicoMensagensContainer.innerHTML = "<p>Você ainda não recebeu mensagens.</p>";
-  } else {
-    const agrupadas = {};
+        if (petsError) {
+            throw new Error("Erro ao buscar seus pets: " + petsError.message);
+        }
 
-    mensagensDoTutor.forEach(msg => {
-      if (!agrupadas[msg.pet]) agrupadas[msg.pet] = [];
-      agrupadas[msg.pet].push(msg);
-    });
+        historicoMensagensContainer.innerHTML = "";
 
-    historicoMensagensContainer.innerHTML = "";
+        if (petsDoTutor.length === 0) {
+            historicoMensagensContainer.innerHTML = "<p>Você não tem pets cadastrados para gerenciar conversas ou ainda não recebeu mensagens para eles.</p>";
+        } else {
+            // Para cada pet do tutor, buscar as mensagens
+            for (const pet of petsDoTutor) {
+                const { data: mensagensDoPet, error: mensagensError } = await supabaseClient
+                    .from('mensagens_chat')
+                    .select('*')
+                    .eq('pet_id', pet.id)
+                    .order('created_at', { ascending: true });
 
-    Object.entries(agrupadas).forEach(([pet, mensagens]) => {
-      const bloco = document.createElement("div");
-      bloco.classList.add("historico-bloco");
-      bloco.innerHTML = `<h3>${pet}</h3>`;
+                if (mensagensError) {
+                    console.error(`Erro ao buscar mensagens para o pet ${pet.nome}:`, mensagensError);
+                    continue; // Pula para o próximo pet se houver erro
+                }
 
-      mensagens.forEach(msg => {
-        const linha = document.createElement("p");
-        linha.innerHTML = `<strong>${msg.remetente}</strong>: ${msg.conteudo}`;
-        bloco.appendChild(linha);
-      });
+                if (mensagensDoPet.length > 0) {
+                    const bloco = document.createElement("div");
+                    bloco.classList.add("historico-bloco");
+                    bloco.innerHTML = `<h3>Conversas sobre: ${pet.nome}</h3>`;
 
-      historicoMensagensContainer.appendChild(bloco);
-    });
-  }
+                    // Agrupar mensagens por remetente para melhor visualização no histórico
+                    const agrupadasPorRemetente = mensagensDoPet.reduce((acc, msg) => {
+                        const remetenteDisplay = msg.remetente_email === clienteEmail ? "Você" : msg.remetente_email;
+                        if (!acc[remetenteDisplay]) acc[remetenteDisplay] = [];
+                        acc[remetenteDisplay].push(msg);
+                        return acc;
+                    }, {});
 
-  modalHistorico.classList.remove("hidden");
-  modalHistorico.classList.add("active");
+                    for (const [remetente, msgs] of Object.entries(agrupadasPorRemetente)) {
+                        const subBloco = document.createElement("div");
+                        subBloco.innerHTML = `<h4>${remetente}</h4>`;
+                        const lista = document.createElement("ul");
+                        msgs.forEach(msg => {
+                            const linha = document.createElement("li");
+                            linha.innerHTML = `[${new Date(msg.created_at).toLocaleString()}]: ${msg.conteudo}`;
+                            lista.appendChild(linha);
+                        });
+                        subBloco.appendChild(lista);
+                        bloco.appendChild(subBloco);
+                    }
+                    historicoMensagensContainer.appendChild(bloco);
+                } else {
+                    const bloco = document.createElement("div");
+                    bloco.classList.add("historico-bloco");
+                    bloco.innerHTML = `<h3>Conversas sobre: ${pet.nome}</h3><p>Nenhuma mensagem ainda.</p>`;
+                    historicoMensagensContainer.appendChild(bloco);
+                }
+            }
+        }
+
+        modalHistorico.classList.remove("hidden");
+        modalHistorico.classList.add("active");
+
+    } catch (error) {
+        console.error("Erro ao carregar histórico de conversas:", error);
+        alert("Ocorreu um erro ao carregar o histórico de conversas.");
+    }
 });
 
 fecharHistorico.addEventListener("click", () => {
-  modalHistorico.classList.remove("active");
-  modalHistorico.classList.add("hidden");
+    modalHistorico.classList.remove("active");
+    modalHistorico.classList.add("hidden");
 });
