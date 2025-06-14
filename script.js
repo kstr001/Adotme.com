@@ -124,20 +124,54 @@ async function verificarLogin() {
     }
 
     // Apenas admin pode cadastrar pet
-    if (isAdmin) {
+    //if (isAdmin) {
         cadastroBtn.style.display = "block";
-    } else {
+    //} else {
         cadastroBtn.style.display = "none";
-    }
+   // }
 
     renderizarPets(); // Re-renderiza pets para mostrar ou esconder botão de chat
 }
 
 // Chamar verificarLogin ao carregar a página
-document.addEventListener("DOMContentLoaded", () => {
-    verificarLogin();
-    inicializarMapa(); // Inicializa o mapa ao carregar o DOM
-});
+async function verificarLogin() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    localUsuarioAtual = user;
+
+    // A verificação de admin deve ser baseada no email do user do Supabase, não apenas no localStorage
+    // **DEIXE ESTA PARTE PARA OUTRAS FUNCIONALIDADES DE ADMIN (chat, etc.)**
+    let isAdmin = false;
+    if (user && user.email === "SEU_EMAIL_ADMIN@EXEMPLO.COM") { // MANTENHA ESTA LINHA E SEU EMAIL ADMIN
+        isAdmin = true;
+        localStorage.setItem("logadoAdmin", "true"); // Mantém para retrocompatibilidade se necessário
+    } else {
+        localStorage.removeItem("logadoAdmin");
+    }
+
+    // Atualiza a exibição dos botões de autenticação
+    if (user) {
+        document.getElementById("cadastroClienteBtn").style.display = "none";
+        document.getElementById("loginBtn").style.display = "none";
+        document.getElementById("logoutBtn").style.display = "block";
+        document.getElementById("verConversasBtn").style.display = "block"; // Mostrar botão de conversas
+        
+        // Exibir nome do usuário logado
+        usuarioLogadoDisplay.textContent = `Olá, ${user.email.split('@')[0]}${isAdmin ? ' (Admin)' : ''}!`;
+        usuarioLogadoDisplay.style.display = "block";
+
+        // **AQUI: Torne o botão de cadastro de pet visível para qualquer usuário logado**
+        cadastroBtn.style.display = "block"; 
+    } else {
+        document.getElementById("cadastroClienteBtn").style.display = "block";
+        document.getElementById("loginBtn").style.display = "block";
+        document.getElementById("logoutBtn").style.display = "none";
+        document.getElementById("verConversasBtn").style.display = "none";
+        usuarioLogadoDisplay.style.display = "none";
+        cadastroBtn.style.display = "none"; // Esconde o botão se ninguém estiver logado
+    }
+
+    renderizarPets(); // Re-renderiza pets para mostrar ou esconder botão de chat
+}
 
 supabaseClient.auth.onAuthStateChange((event, session) => {
     verificarLogin(); // Verifica login sempre que o estado de autenticação mudar
