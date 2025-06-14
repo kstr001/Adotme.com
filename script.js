@@ -2,10 +2,6 @@ const SUPABASE_URL = "https://supabase.com/dashboard/project/ymfmlqzwnzmtuvuhavb
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZm1scXp3bnptdHV2dWhhdmJ0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTg5Mzg4OSwiZXhwIjoyMDY1NDY5ODg5fQ.7CP9ysj_k0GG2YVeD3Fs_BWe9aXkyaO4i-L8k6ghWmg";
 
 // --- Inicialização do Supabase Client (melhor prática) ---
-// É uma boa prática inicializar o cliente Supabase para ter acesso a métodos mais completos,
-// como signInWithPassword, signUp, etc.
-// Certifique-se de ter a biblioteca Supabase JS SDK incluída no seu HTML:
-// <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 const { createClient } = supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -283,8 +279,7 @@ function filtrarPetsPorRaio(pets, userLocation, raioKm) {
 // --- Função para geocodificar o endereço usando Nominatim ---
 async function geocodeAddress(rua, numero, bairro, cidade, estado, cep) {
     const query = `${numero} ${rua}, ${bairro}, ${cidade}, ${estado}, ${cep}, Brasil`;
-    // ATENÇÃO: Substitua 'seu.email@exemplo.com' pelo seu e-mail real para uso do Nominatim.
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&email=seu.email@exemplo.com`;
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&email=renankotovciz001@gmail.com`;
 
     try {
         const response = await fetch(url);
