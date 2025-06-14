@@ -1,5 +1,5 @@
 const SUPABASE_URL = "https://supabase.com/dashboard/project/ymfmlqzwnzmtuvuhavbt/settings/api-keys";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZm1scXp3bnptdHV2dWhhdmJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4OTM4ODksImV4cCI6MjA2NTQ2OTg4OX0.eimoL0JlSCxHAnrfl5WwwiOnvJznBxh-FFQYl7NSKFb";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZm1scXp3bnptdHV2dWhhdmJ0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTg5Mzg4OSwiZXhwIjoyMDY1NDY5ODg5fQ.7CP9ysj_k0GG2YVeD3Fs_BWe9aXkyaO4i-L8k6ghWmg";
 
 // --- Inicialização do Supabase Client (melhor prática) ---
 // É uma boa prática inicializar o cliente Supabase para ter acesso a métodos mais completos,
