@@ -416,3 +416,27 @@ header h1 {
 .drop-area.highlight {
   border-color: #6c6;
 }
+
+.message {
+    display: flex;
+    margin-bottom: 10px;
+}
+.message.sent {
+    justify-content: flex-end;
+}
+.message.received {
+    justify-content: flex-start;
+}
+.message-bubble {
+    padding: 8px 12px;
+    border-radius: 20px;
+    max-width: 70%;
+}
+.message.sent .message-bubble {
+    background-color: #dcf8c6; /* Cor para mensagens enviadas */
+    color: #000;
+}
+.message.received .message-bubble {
+    background-color: #e5e5ea; /* Cor para mensagens recebidas */
+    color: #000;
+}

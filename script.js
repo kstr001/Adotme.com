@@ -520,7 +520,7 @@ sendMessageBtn.addEventListener("click", async () => { // Certifique-se que é a
     } else if (isAdmin) {
         remetente = "admin";
     }
-
+    await salvarMensagem(petId, remetente, message);
     if (message && petId) { // Verifique se há mensagem e ID do pet
         await salvarMensagem(petId, remetente, message); // Passe o petId
         await renderizarMensagens(petNome); // Recarrega as mensagens do chat
@@ -622,15 +622,15 @@ function atualizarListaPets(currentPetsArray) {
 async function salvarMensagem(petId, remetente, conteudo) { // Agora 'async' e recebe petId
     try {
         const { data, error } = await supabaseClient
-            .from('mensagens_chat') // Sua nova tabela de mensagens
+            .from('mensagens_chat')
             .insert([
                 {
-                    pet_id: petId, // Use o ID do pet
-                    remetente_email: remetente, // O email do remetente
+                    pet_id: petId,
+                    remetente_email: remetente, // ESTE VALOR PRECISA SER PRECISO
                     conteudo: conteudo
                 }
             ])
-            .select(); // Retorna o registro inserido
+            .select();
 
         if (error) {
             throw new Error("Erro ao salvar mensagem no Supabase: " + error.message);
@@ -643,6 +643,7 @@ async function salvarMensagem(petId, remetente, conteudo) { // Agora 'async' e r
 }
 
 async function renderizarMensagens(petNome) {
+    const chatMessages = document.getElementById("chatMessages"); // Certifique-se de que esta é a referência correta
     chatMessages.innerHTML = ""; // Limpa antes de adicionar
 
     const petEncontrado = petsArray.find(p => p.nome === petNome);
@@ -651,7 +652,6 @@ async function renderizarMensagens(petNome) {
         return;
     }
     const petId = petEncontrado.id;
-    const donoPetEmail = petEncontrado.dono_email; // O email do dono do pet
 
     try {
         const { data: mensagens, error } = await supabaseClient
@@ -667,40 +667,33 @@ async function renderizarMensagens(petNome) {
         const clienteLogadoEmail = localStorage.getItem("clienteLogadoEmail");
         const isAdmin = localStorage.getItem("logadoAdmin");
 
-        // Determine a identidade do usuário atualmente logado
-        let remetenteAtualIdentidade;
+        // Esta é a chave: Identifica quem está vendo o chat AGORA
+        let usuarioAtualEmailOuAdminFlag = null;
         if (clienteLogadoEmail) {
-            remetenteAtualIdentidade = clienteLogadoEmail;
+            usuarioAtualEmailOuAdminFlag = clienteLogadoEmail;
         } else if (isAdmin) {
-            remetenteAtualIdentidade = "admin"; // Ou um email específico para o admin, se tiver
-        } else {
-            remetenteAtualIdentidade = "deslogado"; // Ninguém logado, não deveria estar no chat
+            // Se for admin, você pode usar uma string fixa "admin" ou o email do admin se ele tiver um
+            // Para simplicidade, vamos usar "admin" aqui, mas certifique-se que o remetente_email no DB
+            // também salve "admin" quando o admin enviar uma mensagem.
+            usuarioAtualEmailOuAdminFlag = "admin";
         }
 
         mensagens.forEach(msg => {
             let tipo;
-            // Se o remetente da mensagem é o usuário que está logado AGORA
-            if (msg.remetente_email === remetenteAtualIdentidade) {
+            // A mensagem foi enviada pelo usuário que está logado atualmente?
+            // Verifica se o remetente da mensagem é o mesmo do usuário logado
+            if (msg.remetente_email === usuarioAtualEmailOuAdminFlag) {
                 tipo = "sent";
-            }
-            // Se o usuário logado AGORA é o dono do pet E a mensagem foi enviada por um NÃO-DONO
-            else if (clienteLogadoEmail === donoPetEmail && msg.remetente_email !== donoPetEmail) {
+            } else {
                 tipo = "received";
             }
-            // Se o usuário logado AGORA NÃO é o dono do pet E a mensagem foi enviada pelo dono do pet
-            else if (clienteLogadoEmail !== donoPetEmail && msg.remetente_email === donoPetEmail) {
-                tipo = "received";
-            }
-            // Caso admin, ou outras situações. Isso pode precisar de ajuste dependendo de quem pode "ver" o que.
-            else if (isAdmin && msg.remetente_email !== "admin") {
-                tipo = "received"; // Admin vê outras mensagens como recebidas
-            }
-            else {
-                tipo = "unknown"; // Caso padrão, para depuração
-            }
-            addMessageToChat(`${msg.conteudo} (${new Date(msg.created_at).toLocaleTimeString()})`, tipo);
+            // Adiciona a hora da mensagem para melhor visualização, como nas suas imagens
+            const dataMensagem = new Date(msg.created_at);
+            const horaFormatada = dataMensagem.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            addMessageToChat(`${msg.conteudo} (${horaFormatada})`, tipo);
         });
 
+        // Garante que o scroll vá para o final do chat
         chatMessages.scrollTop = chatMessages.scrollHeight;
     } catch (err) {
         console.error(err);
