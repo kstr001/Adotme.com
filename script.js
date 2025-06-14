@@ -254,20 +254,6 @@ petForm.addEventListener("submit", async (e) => {
         fotoUrl = publicUrlData.publicUrl;
     }
 
-    const { data, error } = await supabaseClient.from('pets').insert([
-        { 
-            nome: nome,
-            especie: especie,
-            idade: idade,
-            descricao: descricao,
-            dono_email: localUsuarioAtual.email, // Assume que o email do usuário logado é o dono
-            localizacao: enderecoParaGeocodificacao, // Usa o endereço completo para a coluna de localização
-            latitude: lat,
-            longitude: lng,
-            foto_url: fotoUrl
-        }
-    ]);
-
     if (error) {
         alert("Erro ao cadastrar pet: " + error.message);
         console.error("Erro ao cadastrar pet:", error.message);
