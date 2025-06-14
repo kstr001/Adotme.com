@@ -689,3 +689,116 @@ supabaseClient
         }
     })
     .subscribe();
+
+
+async function renderizarPets() {
+    const petsListContainer = document.getElementById("listaPetsContainer");
+    if (!petsListContainer) {
+        console.error("Elemento 'listaPetsContainer' não encontrado.");
+        return;
+    }
+    petsListContainer.innerHTML = ''; // Limpa a lista existente
+
+    const { data, error } = await supabaseClient.from("pets").select("*");
+
+    if (error) {
+        console.error("Erro ao carregar pets:", error.message);
+        petsListContainer.innerHTML = "<p>Erro ao carregar pets.</p>";
+        return;
+    }
+
+    petsArray = data; // Armazena os pets carregados globalmente
+
+    if (petsArray.length === 0) {
+        petsListContainer.innerHTML = "<p>Nenhum pet disponível para adoção no momento.</p>";
+        return;
+    }
+
+    petsArray.forEach(pet => {
+        const petDiv = document.createElement("div");
+        petDiv.classList.add("pet-card");
+        petDiv.innerHTML = `
+            <h3>${pet.nome}</h3>
+            <p>Raça: ${pet.raca}</p>
+            <p>Idade: ${pet.idade} anos</p>
+            <p>Localização: ${pet.localizacao}</p>
+            <p>Gênero: ${pet.genero}</p>
+            <p>Contato: ${pet.contato}</p>
+            ${pet.imagem_url ? `<img src="${pet.imagem_url}" alt="${pet.nome}" class="pet-image">` : ''}
+        `;
+
+        // Botão de chat/conversar
+        const chatBtn = document.createElement("button");
+        chatBtn.textContent = "Conversar";
+        chatBtn.classList.add("chat-btn");
+        chatBtn.dataset.petId = pet.id;
+        chatBtn.dataset.petNome = pet.nome;
+        chatBtn.addEventListener("click", () => {
+            if (!localUsuarioAtual) {
+                alert("Você precisa estar logado para conversar!");
+                return;
+            }
+            currentPetId = pet.id;
+            chatPetNome.textContent = `Chat com ${pet.nome}`;
+            carregarMensagens(currentPetId);
+            modalChat.classList.remove("hidden");
+            modalChat.classList.add("active");
+        });
+        petDiv.appendChild(chatBtn);
+
+        // Botão de Excluir Pet (apenas se o usuário logado for o dono do pet)
+        if (localUsuarioAtual && localUsuarioAtual.email === pet.dono_email) {
+            const deleteBtn = document.createElement("button");
+            deleteBtn.textContent = "Excluir Pet";
+            deleteBtn.classList.add("delete-pet-btn"); // Adicione uma classe para estilização no style.css
+            deleteBtn.dataset.petId = pet.id;
+            deleteBtn.dataset.petNome = pet.nome; // Para a confirmação
+            deleteBtn.addEventListener("click", async (e) => {
+                const petIdToDelete = e.target.dataset.petId;
+                const petNomeToDelete = e.target.dataset.petNome;
+
+                if (confirm(`Tem certeza que deseja excluir o pet "${petNomeToDelete}" e todas as suas mensagens? (Esta ação é irreversível)`)) {
+                    await excluirPet(petIdToDelete); // Chama a nova função simplificada
+                }
+            });
+            petDiv.appendChild(deleteBtn);
+        }
+
+        petsListContainer.appendChild(petDiv);
+    });
+}
+
+
+async function excluirPet(petId) {
+    try {
+        // Com ON DELETE CASCADE configurado no Supabase, basta excluir o pet.
+        // O banco de dados se encarregará de excluir as mensagens_chat relacionadas.
+        const { error: petError } = await supabaseClient
+            .from('pets')
+            .delete()
+            .eq('id', petId);
+
+        if (petError) {
+            throw new Error(`Erro ao excluir o pet: ${petError.message}`);
+        }
+
+        alert("Pet e suas mensagens excluídos com sucesso!");
+        renderizarPets(); // Re-renderiza a lista de pets para remover o pet excluído
+
+        // Ajustes de UI caso o chat ou histórico estivessem abertos para este pet
+        if (currentPetId === petId) {
+            modalChat.classList.add("hidden");
+            modalChat.classList.remove("active");
+            currentPetId = null; // Limpa o ID do pet atual
+        }
+        if (modalHistorico.classList.contains("active")) {
+            // Se o histórico de conversas estiver aberto, tente recarregá-lo
+            // Ou simplesmente feche-o se o pet excluído era o único com conversas
+            verConversasBtn.click(); // Simula o clique para recarregar o histórico
+        }
+
+    } catch (error) {
+        console.error("Erro ao excluir pet:", error);
+        alert(`Ocorreu um erro ao excluir o pet: ${error.message}`);
+    }
+}

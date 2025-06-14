@@ -455,3 +455,19 @@ footer {
   max-height: 100px;
   margin-top: 10px;
 }
+
+.delete-pet-btn {
+    background-color: #dc3545; /* Vermelho para exclusão */
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.3s ease;
+    margin-top: 10px; /* Adiciona um pequeno espaço do botão "Conversar" */
+}
+
+.delete-pet-btn:hover {
+    background-color: #c82333;
+}
