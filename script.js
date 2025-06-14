@@ -1,7 +1,10 @@
 const SUPABASE_URL = "https://ymfmlqzwnzmtuvuhavbt.supabase.co"; // SUBSTITUA PELA SUA PROJECT URL DO SUPABASE
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZm1scXp3bnptdHV2dWhhdmJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4OTM4ODksImV4cCI6MjA2NTQ2OTg4OX0.eimoL0JlSCxHAnrfl5WwwiOnvJznBxh-FFQYl7NSKFk";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZm1scXp3bnptdHV2dWhhdmJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4OTM4ODksImV4cCI6MjA2NTQ2OTg4OX0.eimoL0JlSCxHAnrfl5WwwiOnvJznBxh-FFQYl7NSKF1";
 
 // --- Inicialização do Supabase Client ---
+// Garante que 'supabase' está disponível globalmente antes de usá-lo.
+// Se você está incluindo a biblioteca Supabase via CDN, ela já deve estar disponível.
+// Caso contrário, você precisaria importar de outra forma (ex: import { createClient } from '@supabase/supabase-js').
 const { createClient } = supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -179,12 +182,12 @@ async function verificarLogin() {
         document.getElementById("loginBtn").style.display = "none";
         document.getElementById("logoutBtn").style.display = "block";
         document.getElementById("verConversasBtn").style.display = "block"; // Mostrar botão de conversas
-        
+
         usuarioLogadoDisplay.textContent = `Olá, ${user.email.split('@')[0]}${isAdmin ? ' (Admin)' : ''}!`;
         usuarioLogadoDisplay.style.display = "block";
 
         // Tornar o botão de cadastro de pet visível para qualquer usuário logado
-        cadastroBtn.style.display = "block"; 
+        cadastroBtn.style.display = "block";
     } else {
         document.getElementById("cadastroClienteBtn").style.display = "block";
         document.getElementById("loginBtn").style.display = "block";
@@ -219,7 +222,7 @@ petForm.addEventListener("submit", async (e) => {
     }
 
     // Combine o endereço do ViaCEP com o número para a geocodificação
-    const enderecoParaGeocodificacao = `${enderecoCompletoViaCEP}, ${numero}`; 
+    const enderecoParaGeocodificacao = `${enderecoCompletoViaCEP}, ${numero}`;
     const fotoFile = petFotoInput.files[0];
 
     const { lat, lng } = await obterCoordenadasDaLocalizacao(enderecoParaGeocodificacao);
@@ -230,16 +233,25 @@ petForm.addEventListener("submit", async (e) => {
     }
 
     // Upload da imagem para o Supabase Storage
-    const user = supabaseClient.auth.getUser(); // ou o que você já tiver como usuário logado
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser();
 
-    const filePath = `${user.id}/${Date.now()}-${fotoFile.name}`;
+    if (userError || !userData?.user) {
+        alert("Você precisa estar logado para enviar a foto.");
+        console.error("Erro ao obter usuário:", userError);
+        return;
+    }
+
+    const userId = userData.user.id;
+
+    // Garante que o diretório é específico do usuário para evitar colisões
+    const filePath = `${userId}/${Date.now()}-${fotoFile.name}`;
 
     const { data: uploadData, error: uploadError } = await supabaseClient.storage
-    .from('pet-fotos')
-    .upload(filePath, fotoFile, {
-        cacheControl: '3600',
-        upsert: false,
-    });
+        .from('pet-fotos')
+        .upload(filePath, fotoFile, {
+            cacheControl: '3600',
+            upsert: false,
+        });
 
     let fotoUrl = null;
     if (uploadError) {
@@ -254,9 +266,26 @@ petForm.addEventListener("submit", async (e) => {
         fotoUrl = publicUrlData.publicUrl;
     }
 
-    if (error) {
-        alert("Erro ao cadastrar pet: " + error.message);
-        console.error("Erro ao cadastrar pet:", error.message);
+    // Inserir os dados do pet no Supabase
+    const { data: petInsertData, error: petInsertError } = await supabaseClient
+        .from('pets')
+        .insert([
+            {
+                nome: nome,
+                especie: especie,
+                idade: idade,
+                descricao: descricao,
+                localizacao: enderecoParaGeocodificacao, // Armazena o endereço completo
+                latitude: lat,
+                longitude: lng,
+                foto_url: fotoUrl,
+                dono_email: localUsuarioAtual.email // Adiciona o email do dono
+            }
+        ]);
+
+    if (petInsertError) { // Variável 'error' agora é 'petInsertError'
+        alert("Erro ao cadastrar pet: " + petInsertError.message);
+        console.error("Erro ao cadastrar pet:", petInsertError.message);
     } else {
         alert("Pet cadastrado com sucesso!");
         petForm.reset();
@@ -267,6 +296,7 @@ petForm.addEventListener("submit", async (e) => {
         renderizarPets(); // Atualiza a lista e o mapa
     }
 });
+
 
 // Event listener para o campo CEP
 petCEP.addEventListener('blur', async () => {
@@ -402,7 +432,7 @@ async function obterCoordenadasDaLocalizacao(localizacao) {
         console.error("Erro ao obter coordenadas:", error);
     }
     // Retorna coordenadas padrão se a localização não for encontrada (ex: Curitiba)
-    return { lat: -25.4284, lng: -49.2733 }; 
+    return { lat: -25.4284, lng: -49.2733 };
 }
 
 // --- Funções de Chat ---
@@ -496,14 +526,20 @@ verConversasBtn.addEventListener("click", async () => {
         const { data: petsDoUsuario, error: petsError } = await supabaseClient
             .from('pets')
             .select('id, nome, dono_email')
+            // Adicionado .filter para buscar pets onde o dono é o usuário logado OU onde há mensagens do usuário logado
             .or(`dono_email.eq.${usuarioLogadoEmail},mensagens_chat.remetente_email.eq.${usuarioLogadoEmail}`);
+
 
         if (petsError) throw petsError;
 
         if (petsDoUsuario.length === 0 && !isAdmin) {
             historicoMensagensContainer.innerHTML = '<p>Você não tem pets cadastrados nem conversas iniciadas.</p>';
         } else {
-            for (const pet of petsDoUsuario) {
+            // Filtrar pets únicos se a busca por mensagens trouxer duplicatas
+            const petsUnicos = Array.from(new Set(petsDoUsuario.map(pet => pet.id)))
+                                    .map(id => petsDoUsuario.find(pet => pet.id === id));
+
+            for (const pet of petsUnicos) {
                 const { data: mensagens, error: mensagensError } = await supabaseClient
                     .from('mensagens_chat')
                     .select('*')
@@ -521,6 +557,7 @@ verConversasBtn.addEventListener("click", async () => {
 
                     mensagens.forEach(msg => {
                         let participanteChave;
+                        // Determina a chave do participante para agrupar as conversas
                         if (msg.remetente_email === pet.dono_email) {
                             participanteChave = msg.remetente_email === usuarioLogadoEmail ? "Você (Dono)" : msg.remetente_email;
                         } else {
@@ -533,13 +570,13 @@ verConversasBtn.addEventListener("click", async () => {
                         }
                         conversasAgrupadas[participanteChave].push(msg);
                     });
-                    
+
                     // Renderiza cada grupo de conversa
                     for (const remetente in conversasAgrupadas) {
                         const msgs = conversasAgrupadas[remetente];
                         const subBloco = document.createElement("div");
                         subBloco.classList.add("conversa-individual"); // Adiciona classe para estilização
-                        subBloco.innerHTML = `<h4>${remetente === usuarioLogadoEmail ? 'Você' : remetente.split('@')[0]}</h4>`; // Mostra "Você" ou o nome do e-mail
+                        subBloco.innerHTML = `<h4>${remetente.includes("Você") ? remetente : remetente.split('@')[0]}</h4>`; // Mostra "Você" ou o nome do e-mail
                         const lista = document.createElement("ul");
                         msgs.forEach(msg => {
                             const linha = document.createElement("li");
@@ -551,23 +588,23 @@ verConversasBtn.addEventListener("click", async () => {
                         // Botão Responder - apenas se não for a própria conversa do usuário logado (ex: interessado falando com dono)
                         // ou se for o admin
                         if (remetente !== "Você (Dono)" && remetente !== "Você (Interessado)") {
-                           const responderBtn = document.createElement("button");
-                           responderBtn.classList.add("responder-btn");
-                           responderBtn.textContent = "Responder";
-                           responderBtn.dataset.petId = pet.id;
-                           responderBtn.dataset.remetenteParaResponder = remetente; // Email do outro participante
-                           responderBtn.addEventListener("click", (e) => {
+                            const responderBtn = document.createElement("button");
+                            responderBtn.classList.add("responder-btn");
+                            responderBtn.textContent = "Responder";
+                            responderBtn.dataset.petId = pet.id;
+                            responderBtn.dataset.remetenteParaResponder = remetente; // Email do outro participante
+                            responderBtn.addEventListener("click", (e) => {
                                 const targetPetId = e.target.dataset.petId;
                                 // Abre o modal de chat para o pet e carrega as mensagens
                                 currentPetId = targetPetId;
-                                chatPetNome.textContent = `Chat com ${pet.nome}`;
+                                chatPetNome.textContent = `Chat com ${petsArray.find(p => p.id == currentPetId).nome}`;
                                 carregarMensagens(targetPetId);
                                 modalHistorico.classList.remove("active");
                                 modalHistorico.classList.add("hidden");
                                 modalChat.classList.remove("hidden");
                                 modalChat.classList.add("active");
-                           });
-                           subBloco.appendChild(responderBtn);
+                            });
+                            subBloco.appendChild(responderBtn);
                         }
                         bloco.appendChild(subBloco);
                     }
@@ -619,14 +656,12 @@ supabaseClient
         // Se a mensagem for para o pet do chat atual, recarregue as mensagens
         if (currentPetId && payload.new && payload.new.pet_id == currentPetId) {
             carregarMensagens(currentPetId);
-        } else if (payload.new && payload.new.remetente_email === localUsuarioAtual.email ||
-                   payload.new && petsArray.find(p => p.id === payload.new.pet_id && p.dono_email === localUsuarioAtual.email)) {
-            // Se a mudança for relevante para o histórico de conversas do usuário logado
-            // (ou se ele for admin), pode ser útil recarregar o histórico se o modal estiver aberto.
-            // Por simplicidade, vamos apenas renderizar os pets, o que garante que os contadores de chat
-            // ou botões de "interessado" se atualizem se houver tal lógica.
-            // Se o modal do histórico estiver aberto, você poderia chamar verConversasBtn.click()
-            // ou uma função similar para atualizá-lo.
+        } else if (payload.new && (payload.new.remetente_email === localUsuarioAtual.email ||
+                                   petsArray.some(p => p.id === payload.new.pet_id && p.dono_email === localUsuarioAtual.email))) {
+            // Se o modal do histórico estiver aberto, atualize-o
+            if (modalHistorico.classList.contains("active")) {
+                verConversasBtn.click(); // Simula o clique no botão para recarregar o histórico
+            }
         }
     })
     .subscribe();
