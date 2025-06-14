@@ -545,8 +545,8 @@ function atualizarListaPets(currentPetsArray) {
             <strong>${pet.nome}</strong>
             <p>Espécie: ${pet.especie}</p>
             <p>Idade: ${pet.idade !== undefined && pet.idade !== null ? pet.idade + " anos" : "não informada"}</p>
-            ${isDono 
-                ? `<button class="ver-conversas-btn" data-pet-nome="${pet.nome}">Ver Conversas</button>` 
+            ${isDono
+                ? `<button class="chat-pet-btn" data-pet-nome="${pet.nome}">Ver Mensagens</button>`
                 : `<button class="chat-pet-btn" data-pet-nome="${pet.nome}">Conversar com o Tutor</button>`
             }
             ${isDono ? `<button class="excluir-pet-btn" data-pet-id="${pet.id}">Excluir</button>` : ""}
@@ -560,6 +560,12 @@ function atualizarListaPets(currentPetsArray) {
             renderizarMensagens(petNome);
 
             chatPetNome.textContent = `Chat com ${petNome}`;
+            const clienteEmail = localStorage.getItem("clienteLogadoEmail");
+            const isTutor = petsArray.find(p => p.nome === petNome && p.dono === clienteEmail);
+
+            if (isTutor) {
+                chatPetNome.textContent = `Mensagens do seu pet: ${petNome}`;
+            }
             modalChat.classList.remove("hidden");
             modalChat.classList.add("active");
             chatMessages.scrollTop = chatMessages.scrollHeight;
