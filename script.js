@@ -523,16 +523,41 @@ verConversasBtn.addEventListener("click", async () => {
         const isAdmin = (usuarioLogadoEmail === "SEU_EMAIL_ADMIN@EXEMPLO.COM"); // Verificação de admin
 
         // Buscar todos os pets para os quais o usuário logado é o dono OU onde há conversas com o usuário
-        const { data: petsDoUsuario, error: petsError } = await supabaseClient
+        const { data: petsOwnedByUser, error: ownedPetsError } = await supabaseClient
             .from('pets')
             .select('id, nome, dono_email')
-            // Adicionado .filter para buscar pets onde o dono é o usuário logado OU onde há mensagens do usuário logado
-            .or(`dono_email.eq.${usuarioLogadoEmail},mensagens_chat.remetente_email.eq.${usuarioLogadoEmail}`);
+            .eq('dono_email', usuarioLogadoEmail);
+        if (ownedPetsError) throw ownedPetsError;
 
+        // Segundo, buscar pets envolvidos em conversas com o usuário logado (como remetente)
+        // Isso é mais complexo, pois precisamos dos pet_ids das mensagens.
+        // Primeiro, busque os pet_ids das mensagens do usuário
+        const { data: mensagensDoUsuario, error: mensagensError } = await supabaseClient
+            .from('mensagens_chat')
+            .select('pet_id')
+            .eq('remetente_email', usuarioLogadoEmail);
+        if (mensagensError) throw mensagensError;
 
-        if (petsError) throw petsError;
+        // Extrair IDs únicos dos pets dessas mensagens
+        const petIdsComMensagens = [...new Set(mensagensDoUsuario.map(msg => msg.pet_id))];
 
-        if (petsDoUsuario.length === 0 && !isAdmin) {
+        let petsComConversas = [];
+        if (petIdsComMensagens.length > 0) {
+            const { data: petsFromMessages, error: petsFromMessagesError } = await supabaseClient
+                .from('pets')
+                .select('id, nome, dono_email')
+                .in('id', petIdsComMensagens);
+            if (petsFromMessagesError) throw petsFromMessagesError;
+            petsComConversas = petsFromMessages;
+        }
+
+        // Combinar os dois conjuntos de pets e remover duplicatas
+        const allPets = [...petsOwnedByUser, ...petsComConversas];
+        const petsUnicos = Array.from(new Set(allPets.map(pet => pet.id)))
+                                    .map(id => allPets.find(pet => pet.id === id));
+
+        // Agora, use 'petsUnicos' no lugar de 'petsDoUsuario' no restante do seu código
+        if (petsUnicos.length === 0 && !isAdmin) {
             historicoMensagensContainer.innerHTML = '<p>Você não tem pets cadastrados nem conversas iniciadas.</p>';
         } else {
             // Filtrar pets únicos se a busca por mensagens trouxer duplicatas
