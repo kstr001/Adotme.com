@@ -154,7 +154,13 @@ formCadastroCliente.addEventListener("submit", async (e) => { // Adicionado 'asy
 // --- Função para atualizar o estado do botão de login/cadastro ---
 async function atualizarEstadoLogin() {
     const { data: { user } } = await supabaseClient.auth.getUser(); // Obtém o usuário logado via Supabase Auth
+    const verConversasBtn = document.getElementById("verConversasBtn");
 
+    if (logadoCliente) {
+        verConversasBtn.style.display = "inline-block";
+    } else {
+        verConversasBtn.style.display = "none";
+    }
     if (localStorage.getItem("logadoAdmin")) { // Lógica de admin hardcoded
         loginBtn.textContent = "Sair";
         cadastroBtn.style.display = "inline-block"; // Botão de cadastro de pet
@@ -706,3 +712,50 @@ function mostrarMensagensDoTutor(petNome) {
   modalHistoricoChat.classList.remove("hidden");
   modalHistoricoChat.classList.add("active");
 }
+
+const modalHistorico = document.getElementById("modalHistorico");
+const fecharHistorico = document.getElementById("fecharHistorico");
+const historicoMensagensContainer = document.getElementById("historicoMensagensContainer");
+
+verConversasBtn.addEventListener("click", () => {
+  const mensagens = JSON.parse(localStorage.getItem("mensagensChat") || "[]");
+  const clienteEmail = localStorage.getItem("clienteLogadoEmail");
+  const petsDoTutor = petsArray.filter(pet => pet.dono === clienteEmail).map(p => p.nome);
+
+  const mensagensDoTutor = mensagens.filter(msg => petsDoTutor.includes(msg.pet));
+
+  if (mensagensDoTutor.length === 0) {
+    historicoMensagensContainer.innerHTML = "<p>Você ainda não recebeu mensagens.</p>";
+  } else {
+    const agrupadas = {};
+
+    mensagensDoTutor.forEach(msg => {
+      if (!agrupadas[msg.pet]) agrupadas[msg.pet] = [];
+      agrupadas[msg.pet].push(msg);
+    });
+
+    historicoMensagensContainer.innerHTML = "";
+
+    Object.entries(agrupadas).forEach(([pet, mensagens]) => {
+      const bloco = document.createElement("div");
+      bloco.classList.add("historico-bloco");
+      bloco.innerHTML = `<h3>${pet}</h3>`;
+
+      mensagens.forEach(msg => {
+        const linha = document.createElement("p");
+        linha.innerHTML = `<strong>${msg.remetente}</strong>: ${msg.conteudo}`;
+        bloco.appendChild(linha);
+      });
+
+      historicoMensagensContainer.appendChild(bloco);
+    });
+  }
+
+  modalHistorico.classList.remove("hidden");
+  modalHistorico.classList.add("active");
+});
+
+fecharHistorico.addEventListener("click", () => {
+  modalHistorico.classList.remove("active");
+  modalHistorico.classList.add("hidden");
+});
