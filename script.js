@@ -16,38 +16,49 @@ const modalCadastro = document.getElementById("modalCadastro");
 const fecharCadastro = document.getElementById("fecharModal");
 const loginBtn = document.getElementById("loginBtn");
 const modalLogin = document.getElementById("modalLogin");
-const fecharLogin = document.getElementById("fecharModalLogin");
+const fecharLogin = document.getElementById("fecharLogin");
+const loginForm = document.getElementById("loginForm");
+const emailLogin = document.getElementById("emailLogin");
+const senhaLogin = document.getElementById("senhaLogin");
 const cadastroClienteBtn = document.getElementById("cadastroClienteBtn");
 const modalCadastroCliente = document.getElementById("modalCadastroCliente");
 const fecharCadastroCliente = document.getElementById("fecharCadastroCliente");
-const listaPetsDiv = document.getElementById("listaPets");
-const emailLogin = document.getElementById("emailLogin");
-const senhaLogin = document = document.getElementById("senhaLogin"); // Corrigido a atribuição aqui, era duplicada
-const loginForm = document.getElementById("loginForm");
 const cadastroClienteForm = document.getElementById("cadastroClienteForm");
-const cadastroPetForm = document.getElementById("cadastroPetForm");
 const emailCliente = document.getElementById("emailCliente");
 const senhaCliente = document.getElementById("senhaCliente");
 const confirmaSenhaCliente = document.getElementById("confirmaSenhaCliente");
 const logoutBtn = document.getElementById("logoutBtn");
-const verConversasBtn = document.getElementById("verConversasBtn"); // Botão "Ver Conversas" do tutor
-const usuarioLogadoDisplay = document.getElementById("usuarioLogadoDisplay"); // Novo elemento para exibir o usuário
+const usuarioLogadoDisplay = document.getElementById("usuarioLogadoDisplay");
 
-// Chat Elements
+// --- Elementos do formulário de cadastro de pet ---
+const petForm = document.getElementById("petForm");
+const petNome = document.getElementById("nome");
+const petEspecie = document.getElementById("especie");
+const petIdade = document.getElementById("idade");
+const petDescricao = document.getElementById("descricao");
+const petFotoInput = document.getElementById("petFoto");
+const petCEP = document.getElementById("cep"); // NOVO
+const petEndereco = document.getElementById("endereco"); // NOVO
+
+// --- Elementos do Chat ---
 const modalChat = document.getElementById("modalChat");
 const fecharChat = document.getElementById("fecharChat");
 const chatPetNome = document.getElementById("chatPetNome");
 const chatMessages = document.getElementById("chatMessages");
 const chatMessageInput = document.getElementById("chatMessageInput");
 const sendMessageBtn = document.getElementById("sendMessageBtn");
-
-// Histórico de Conversas Elements
+const verConversasBtn = document.getElementById("verConversasBtn");
 const modalHistorico = document.getElementById("modalHistorico");
 const fecharHistorico = document.getElementById("fecharHistorico");
 const historicoMensagensContainer = document.getElementById("historicoMensagensContainer");
 
-// Leaflet Map
-let map; // Variável para o mapa Leaflet
+
+// --- Mapa ---
+const map = L.map('map').setView([-25.4284, -49.2733], 12); // Curitiba, PR
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(map);
+let markers = []; // Array para armazenar os marcadores do mapa
 
 // --- Funções de Modal ---
 cadastroBtn.addEventListener("click", () => {
@@ -58,6 +69,7 @@ cadastroBtn.addEventListener("click", () => {
 fecharCadastro.addEventListener("click", () => {
     modalCadastro.classList.remove("active");
     modalCadastro.classList.add("hidden");
+    petForm.reset(); // Limpa o formulário ao fechar
 });
 
 loginBtn.addEventListener("click", () => {
@@ -68,6 +80,7 @@ loginBtn.addEventListener("click", () => {
 fecharLogin.addEventListener("click", () => {
     modalLogin.classList.remove("active");
     modalLogin.classList.add("hidden");
+    loginForm.reset();
 });
 
 cadastroClienteBtn.addEventListener("click", () => {
@@ -78,135 +91,29 @@ cadastroClienteBtn.addEventListener("click", () => {
 fecharCadastroCliente.addEventListener("click", () => {
     modalCadastroCliente.classList.remove("active");
     modalCadastroCliente.classList.add("hidden");
+    cadastroClienteForm.reset();
 });
-
-fecharChat.addEventListener("click", () => {
-    modalChat.classList.remove("active");
-    modalChat.classList.add("hidden");
-});
-
-fecharHistorico.addEventListener("click", () => {
-    modalHistorico.classList.remove("active");
-    modalHistorico.classList.add("hidden");
-});
-
 
 // --- Funções de Autenticação ---
-async function verificarLogin() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    localUsuarioAtual = user;
-
-    // A verificação de admin deve ser baseada no email do user do Supabase, não apenas no localStorage
-    let isAdmin = false;
-    if (user && user.email === "SEU_EMAIL_ADMIN@EXEMPLO.COM") { // ** SUBSTITUA PELO SEU EMAIL DE ADMINISTRADOR REAL **
-        isAdmin = true;
-        localStorage.setItem("logadoAdmin", "true"); // Mantém para retrocompatibilidade se necessário
-    } else {
-        localStorage.removeItem("logadoAdmin");
-    }
-
-    // Atualiza a exibição dos botões de autenticação
-    if (user) {
-        document.getElementById("cadastroClienteBtn").style.display = "none";
-        document.getElementById("loginBtn").style.display = "none";
-        document.getElementById("logoutBtn").style.display = "block";
-        document.getElementById("verConversasBtn").style.display = "block"; // Mostrar botão de conversas
-        
-        // Exibir nome do usuário logado
-        usuarioLogadoDisplay.textContent = `Olá, ${user.email.split('@')[0]}${isAdmin ? ' (Admin)' : ''}!`;
-        usuarioLogadoDisplay.style.display = "block";
-    } else {
-        document.getElementById("cadastroClienteBtn").style.display = "block";
-        document.getElementById("loginBtn").style.display = "block";
-        document.getElementById("logoutBtn").style.display = "none";
-        document.getElementById("verConversasBtn").style.display = "none";
-        usuarioLogadoDisplay.style.display = "none";
-    }
-
-    // Apenas admin pode cadastrar pet
-    //if (isAdmin) {
-        cadastroBtn.style.display = "block";
-    //} else {
-        cadastroBtn.style.display = "none";
-   // }
-
-    renderizarPets(); // Re-renderiza pets para mostrar ou esconder botão de chat
-}
-
-// Chamar verificarLogin ao carregar a página
-async function verificarLogin() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    localUsuarioAtual = user;
-
-    // A verificação de admin deve ser baseada no email do user do Supabase, não apenas no localStorage
-    // **DEIXE ESTA PARTE PARA OUTRAS FUNCIONALIDADES DE ADMIN (chat, etc.)**
-    let isAdmin = false;
-    if (user && user.email === "SEU_EMAIL_ADMIN@EXEMPLO.COM") { // MANTENHA ESTA LINHA E SEU EMAIL ADMIN
-        isAdmin = true;
-        localStorage.setItem("logadoAdmin", "true"); // Mantém para retrocompatibilidade se necessário
-    } else {
-        localStorage.removeItem("logadoAdmin");
-    }
-
-    // Atualiza a exibição dos botões de autenticação
-    if (user) {
-        document.getElementById("cadastroClienteBtn").style.display = "none";
-        document.getElementById("loginBtn").style.display = "none";
-        document.getElementById("logoutBtn").style.display = "block";
-        document.getElementById("verConversasBtn").style.display = "block"; // Mostrar botão de conversas
-        
-        // Exibir nome do usuário logado
-        usuarioLogadoDisplay.textContent = `Olá, ${user.email.split('@')[0]}${isAdmin ? ' (Admin)' : ''}!`;
-        usuarioLogadoDisplay.style.display = "block";
-
-        // **AQUI: Torne o botão de cadastro de pet visível para qualquer usuário logado**
-        cadastroBtn.style.display = "block"; 
-    } else {
-        document.getElementById("cadastroClienteBtn").style.display = "block";
-        document.getElementById("loginBtn").style.display = "block";
-        document.getElementById("logoutBtn").style.display = "none";
-        document.getElementById("verConversasBtn").style.display = "none";
-        usuarioLogadoDisplay.style.display = "none";
-        cadastroBtn.style.display = "none"; // Esconde o botão se ninguém estiver logado
-    }
-
-    renderizarPets(); // Re-renderiza pets para mostrar ou esconder botão de chat
-}
-
-supabaseClient.auth.onAuthStateChange((event, session) => {
-    verificarLogin(); // Verifica login sempre que o estado de autenticação mudar
-});
-
 loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const email = emailLogin.value;
     const senha = senhaLogin.value;
 
-    try {
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: senha,
-        });
+    const { error } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: senha,
+    });
 
-        if (error) {
-            console.error("Erro no login:", error.message);
-            alert("Erro no login: " + error.message + ". Verifique suas credenciais e se seu email foi confirmado.");
-        } else {
-            console.log("Usuário logado:", data.user);
-            localUsuarioAtual = data.user;
-            // Removed localStorage.setItem("clienteLogadoEmail") as user object is directly available
-            // isAdmin check moved to verificarLogin for a single source of truth based on user.email
-            alert("Login realizado com sucesso!");
-            modalLogin.classList.remove("active");
-            modalLogin.classList.add("hidden");
-            emailLogin.value = "";
-            senhaLogin.value = "";
-            verificarLogin(); // Refresh UI based on new login state
-            renderizarPets(); // Update pets list with correct button visibility
-        }
-    } catch (err) {
-        console.error("Erro inesperado no login:", err);
-        alert("Ocorreu um erro inesperado no login.");
+    if (error) {
+        alert("Erro no login: " + error.message);
+        console.error("Erro no login:", error.message);
+    } else {
+        alert("Login realizado com sucesso!");
+        modalLogin.classList.remove("active");
+        modalLogin.classList.add("hidden");
+        loginForm.reset();
+        await verificarLogin(); // Atualiza a UI após o login
     }
 });
 
@@ -221,486 +128,203 @@ cadastroClienteForm.addEventListener("submit", async (e) => {
         return;
     }
 
-    try {
-        const { data, error } = await supabaseClient.auth.signUp({
-            email: email,
-            password: senha,
-        });
+    const { error } = await supabaseClient.auth.signUp({
+        email: email,
+        password: senha,
+    });
 
-        if (error) {
-            console.error("Erro no cadastro:", error.message);
-            alert("Erro no cadastro: " + error.message);
-        } else {
-            console.log("Usuário cadastrado:", data.user);
-            alert("Cadastro realizado com sucesso! Verifique seu email para confirmar a conta.");
-            modalCadastroCliente.classList.remove("active");
-            modalCadastroCliente.classList.add("hidden");
-            cadastroClienteForm.reset(); // Limpa o formulário
-        }
-    } catch (err) {
-        console.error("Erro inesperado no cadastro:", err);
-        alert("Ocorreu um erro inesperado no cadastro.");
+    if (error) {
+        alert("Erro no cadastro: " + error.message);
+        console.error("Erro no cadastro:", error.message);
+    } else {
+        alert("Cadastro realizado com sucesso! Verifique seu e-mail para confirmar a conta.");
+        modalCadastroCliente.classList.remove("active");
+        modalCadastroCliente.classList.add("hidden");
+        cadastroClienteForm.reset();
     }
 });
 
 logoutBtn.addEventListener("click", async () => {
-    try {
-        const { error } = await supabaseClient.auth.signOut();
-        if (error) {
-            console.error("Erro ao fazer logout:", error.message);
-            alert("Erro ao fazer logout: " + error.message);
-        } else {
-            localStorage.removeItem("logadoAdmin"); // Clear admin flag
-            localUsuarioAtual = null;
-            alert("Logout realizado com sucesso!");
-            verificarLogin(); // Atualiza a UI para estado deslogado
-            renderizarPets(); // Atualiza a lista de pets sem botões de chat
-        }
-    } catch (err) {
-        console.error("Erro inesperado no logout:", err);
-        alert("Ocorreu um erro inesperado no logout.");
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) {
+        alert("Erro ao sair: " + error.message);
+        console.error("Erro ao sair:", error.message);
+    } else {
+        alert("Deslogado com sucesso!");
+        await verificarLogin(); // Atualiza a UI após o logout
     }
 });
 
+// Verifica o estado de login e atualiza a UI
+async function verificarLogin() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    localUsuarioAtual = user;
+
+    let isAdmin = false;
+    // Substitua 'SEU_EMAIL_ADMIN@EXEMPLO.COM' pelo seu email de administrador real
+    if (user && user.email === "SEU_EMAIL_ADMIN@EXEMPLO.COM") {
+        isAdmin = true;
+        localStorage.setItem("logadoAdmin", "true");
+    } else {
+        localStorage.removeItem("logadoAdmin");
+    }
+
+    if (user) {
+        document.getElementById("cadastroClienteBtn").style.display = "none";
+        document.getElementById("loginBtn").style.display = "none";
+        document.getElementById("logoutBtn").style.display = "block";
+        document.getElementById("verConversasBtn").style.display = "block"; // Mostrar botão de conversas
+        
+        usuarioLogadoDisplay.textContent = `Olá, ${user.email.split('@')[0]}${isAdmin ? ' (Admin)' : ''}!`;
+        usuarioLogadoDisplay.style.display = "block";
+
+        // Tornar o botão de cadastro de pet visível para qualquer usuário logado
+        cadastroBtn.style.display = "block"; 
+    } else {
+        document.getElementById("cadastroClienteBtn").style.display = "block";
+        document.getElementById("loginBtn").style.display = "block";
+        document.getElementById("logoutBtn").style.display = "none";
+        document.getElementById("verConversasBtn").style.display = "none";
+        usuarioLogadoDisplay.style.display = "none";
+        cadastroBtn.style.display = "none"; // Esconde o botão se ninguém estiver logado
+    }
+
+    renderizarPets();
+}
 
 // --- Funções de Pets ---
-async function buscarPetsDoSupabase() {
-    try {
-        const { data, error } = await supabaseClient
-            .from("pets")
-            .select("*");
-
-        if (error) {
-            throw new Error("Erro ao buscar pets: " + error.message);
-        }
-        petsArray = data;
-        renderizarPets();
-        atualizarMapaComPets(petsArray); // Atualiza os marcadores no mapa
-    } catch (err) {
-        console.error(err);
-        listaPetsDiv.innerHTML = "<p>Não foi possível carregar os pets.</p>";
-    }
-}
-
-async function renderizarPets() {
-    listaPetsDiv.innerHTML = "";
-    // Usar localUsuarioAtual.email para verificações
-    const usuarioLogadoEmail = localUsuarioAtual ? localUsuarioAtual.email : null;
-    const isAdmin = (usuarioLogadoEmail === "SEU_EMAIL_ADMIN@EXEMPLO.COM"); // ** SUBSTITUA PELO SEU EMAIL DE ADMINISTRADOR REAL **
-
-    petsArray.forEach((pet) => {
-        const petDiv = document.createElement("div");
-        petDiv.classList.add("pet-card");
-        petDiv.innerHTML = `
-            <h3>${pet.nome} (${pet.especie})</h3>
-            <p><strong>Raça:</strong> ${pet.raca}</p>
-            <p><strong>Idade:</strong> ${pet.idade} anos</p>
-            <p><strong>Localização:</strong> ${pet.localizacao}</p>
-            <img src="${pet.foto_url}" alt="${pet.nome}" />
-            ${
-                // Botão "Conversar com o Tutor" visível para clientes NÃO donos do pet
-                // Ou para o admin (admin pode iniciar conversa com qualquer dono de pet)
-                (usuarioLogadoEmail && usuarioLogadoEmail !== pet.dono_email) || isAdmin
-                    ? `<button class="chat-btn" data-pet-id="${pet.id}" data-pet-nome="${pet.nome}" data-dono-email="${pet.dono_email}">Conversar com o Tutor</button>`
-                    : ""
-            }
-            ${
-                // Botão "Excluir Pet" visível para o dono do pet OU para o admin
-                (usuarioLogadoEmail && usuarioLogadoEmail === pet.dono_email) || isAdmin
-                    ? `<button class="delete-btn" data-pet-id="${pet.id}">Excluir Pet</button>`
-                    : ""
-            }
-        `;
-        listaPetsDiv.appendChild(petDiv);
-    });
-
-    // Adiciona event listeners para os botões de chat
-    document.querySelectorAll(".chat-btn").forEach((button) => {
-        button.addEventListener("click", (event) => {
-            currentPetId = event.target.dataset.petId; // Define o pet ID atual
-            const petNome = event.target.dataset.petNome;
-            // Para o chat com o tutor, o nome do pet é o suficiente.
-            // Para conversas cliente-tutor, o sistema de remetente/destinatário vai resolver quem é quem.
-            chatPetNome.textContent = `Chat sobre ${petNome}`;
-            modalChat.classList.remove("hidden");
-            modalChat.classList.add("active");
-            renderizarMensagens(petNome); // Carrega as mensagens do chat
-        });
-    });
-
-    // Adiciona event listeners para os botões de exclusão
-    document.querySelectorAll(".delete-btn").forEach((button) => {
-        button.addEventListener("click", async (event) => {
-            const petIdToDelete = event.target.dataset.petId;
-            if (confirm("Tem certeza que deseja excluir este pet?")) {
-                try {
-                    const { error } = await supabaseClient
-                        .from("pets")
-                        .delete()
-                        .eq("id", petIdToDelete);
-
-                    if (error) {
-                        // Mais detalhes no alert para depuração
-                        throw new Error(`Erro ao excluir pet: ${error.message}. Verifique a política RLS de DELETE para a tabela 'pets' no Supabase.`);
-                    }
-                    alert("Pet excluído com sucesso!");
-                    buscarPetsDoSupabase(); // Atualiza a lista
-                } catch (err) {
-                    console.error(err);
-                    alert("Ocorreu um erro ao excluir o pet: " + err.message);
-                }
-            }
-        });
-    });
-}
-
-
-cadastroPetForm.addEventListener("submit", async (e) => {
+petForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const nome = document.getElementById("nomePet").value;
-    const especie = document.getElementById("especiePet").value;
-    const raca = document.getElementById("racaPet").value;
-    const idade = parseInt(document.getElementById("idadePet").value);
-    const localizacao = document.getElementById("localizacaoPet").value;
-    const fotoFile = document.getElementById("fotoPet").files[0];
-    const donoEmail = localUsuarioAtual ? localUsuarioAtual.email : null; // Quem está logado é o dono
+    const nome = petNome.value;
+    const especie = petEspecie.value;
+    const idade = parseInt(petIdade.value);
+    const descricao = petDescricao.value;
+    const cep = petCEP.value; // NOVO
+    const endereco = petEndereco.value; // NOVO
+    const fotoFile = petFotoInput.files[0];
 
-    if (!donoEmail) {
+    if (!localUsuarioAtual) {
         alert("Você precisa estar logado para cadastrar um pet.");
         return;
     }
 
-    try {
-        let foto_url = null;
-        if (fotoFile) {
-            const { data, error } = await supabaseClient.storage
-                .from("fotos-pets")
-                .upload(`${Date.now()}-${fotoFile.name}`, fotoFile, {
-                    cacheControl: "3600",
-                    upsert: false,
-                });
+    // Combine CEP e Endereço para uma consulta de geocodificação
+    const enderecoCompleto = `${endereco}, CEP ${cep}`; 
+    const { lat, lng } = await obterCoordenadasDaLocalizacao(enderecoCompleto);
 
-            if (error) {
-                throw new Error("Erro ao fazer upload da imagem: " + error.message);
-            }
-            foto_url = `${SUPABASE_URL}/storage/v1/object/public/fotos-pets/${data.path}`;
-        }
-
-        // Simula a obtenção de coordenadas de localização
-        const coordenadas = await obterCoordenadasDaLocalizacao(localizacao);
-        if (!coordenadas) {
-            alert("Não foi possível encontrar as coordenadas para a localização informada.");
-            return;
-        }
-
-        const { error } = await supabaseClient.from("pets").insert([
-            {
-                nome,
-                especie,
-                raca,
-                idade,
-                localizacao,
-                foto_url,
-                dono_email: donoEmail,
-                latitude: coordenadas.lat,
-                longitude: coordenadas.lng
-            },
-        ]);
-
-        if (error) {
-            throw new Error("Erro ao cadastrar pet: " + error.message);
-        }
-
-        alert("Pet cadastrado com sucesso!");
-        modalCadastro.classList.remove("active");
-        modalCadastro.classList.add("hidden");
-        cadastroPetForm.reset();
-        buscarPetsDoSupabase(); // Atualiza a lista de pets e o mapa
-    } catch (err) {
-        console.error(err);
-        alert("Ocorreu um erro ao cadastrar o pet: " + err.message);
-    }
-});
-
-
-// --- Funções de Chat ---
-
-// Adiciona uma mensagem ao DOM do chat
-function addMessageToChat(messageText, type) {
-    const messageDiv = document.createElement("div");
-    messageDiv.classList.add("message", type); // 'sent' ou 'received'
-    
-    const messageBubble = document.createElement("div");
-    messageBubble.classList.add("message-bubble");
-    messageBubble.textContent = messageText;
-
-    messageDiv.appendChild(messageBubble);
-    chatMessages.appendChild(messageDiv);
-    chatMessages.scrollTop = chatMessages.scrollHeight; // Rola para o final
-}
-
-
-// Salva a mensagem no Supabase
-async function salvarMensagem(petId, remetente, conteudo) {
-    try {
-        const { data, error } = await supabaseClient
-            .from('mensagens_chat')
-            .insert([
-                {
-                    pet_id: petId,
-                    remetente_email: remetente,
-                    conteudo: conteudo
-                }
-            ])
-            .select();
-
-        if (error) {
-            throw new Error(`Erro ao salvar mensagem no Supabase: ${error.message}. Verifique a política RLS de INSERT para a tabela 'mensagens_chat' no Supabase.`);
-        }
-        console.log("Mensagem salva no Supabase:", data);
-    } catch (err) {
-        console.error(err);
-        alert("Erro ao enviar mensagem.");
-    }
-}
-
-// Renderiza as mensagens do chat buscando do Supabase
-async function renderizarMensagens(petNome) {
-    chatMessages.innerHTML = ""; // Limpa o chat antes de carregar as novas mensagens
-
-    const petEncontrado = petsArray.find(p => p.nome === petNome);
-    if (!petEncontrado) {
-        console.error("Erro: Pet não encontrado para o chat:", petNome);
-        chatMessages.innerHTML = "<p>Erro: Pet não encontrado para carregar mensagens.</p>";
-        return;
-    }
-    const petId = petEncontrado.id;
-    const donoPetEmail = petEncontrado.dono_email;
-
-    console.log("--- Chamando renderizarMensagens para o pet:", petNome, "(ID:", petId, ") ---");
-
-    try {
-        const { data: mensagens, error } = await supabaseClient
-            .from('mensagens_chat')
-            .select('*')
-            .eq('pet_id', petId)
-            .order('created_at', { ascending: true }); // Ordena por data
-
-        if (error) {
-            console.error("Erro ao buscar mensagens no Supabase:", error);
-            chatMessages.innerHTML = `<p>Não foi possível carregar as mensagens: ${error.message}. Verifique o RLS de SELECT na tabela 'mensagens_chat'.</p>`;
-            return;
-        }
-
-        const usuarioVisualizadorEmail = localUsuarioAtual ? localUsuarioAtual.email : null;
-        const isAdmin = (usuarioVisualizadorEmail === "SEU_EMAIL_ADMIN@EXEMPLO.COM"); // ** SUBSTITUA PELO SEU EMAIL DE ADMINISTRADOR REAL **
-        
-        console.log("Usuário visualizador atual:", usuarioVisualizadorEmail);
-
-        if (mensagens.length === 0) {
-            chatMessages.innerHTML = "<p>Nenhuma mensagem ainda neste chat.</p>";
-        } else {
-            mensagens.forEach(msg => {
-                let tipo;
-                // Compara o remetente da mensagem (salvo no DB) com o e-mail do usuário logado AGORA
-                if (msg.remetente_email === usuarioVisualizadorEmail) {
-                    tipo = "sent";
-                } else {
-                    tipo = "received";
-                }
-
-                const dataMensagem = new Date(msg.created_at);
-                const horaFormatada = dataMensagem.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                
-                console.log(`Mensagem: "${msg.conteudo}" | Remetente DB: "${msg.remetente_email}" | Tipo Calculado: "${tipo}"`);
-                
-                addMessageToChat(`${msg.conteudo} (${horaFormatada})`, tipo);
-            });
-        }
-        chatMessages.scrollTop = chatMessages.scrollHeight; // Garante que o scroll vá para o final
-    } catch (err) {
-        console.error("Erro inesperado ao renderizar mensagens:", err);
-        chatMessages.innerHTML = `<p>Ocorreu um erro inesperado ao exibir as mensagens: ${err.message}</p>`;
-    }
-}
-
-// Event listener para o botão de enviar mensagem no chat
-sendMessageBtn.addEventListener("click", async () => {
-    const message = chatMessageInput.value.trim();
-    if (!message || !currentPetId) { // Verifica se há mensagem e um pet ativo
-        alert("Nenhuma mensagem para enviar ou pet não selecionado.");
+    if (!lat || !lng) {
+        alert("Não foi possível obter as coordenadas para o endereço fornecido. Por favor, tente novamente com um endereço mais preciso.");
         return;
     }
 
-    const remetenteParaSalvar = localUsuarioAtual ? localUsuarioAtual.email : null;
-
-    if (!remetenteParaSalvar) {
-        alert("Você precisa estar logado para enviar mensagens.");
-        return;
-    }
-
-    const petNomeAtual = chatPetNome.textContent.split(' com ')[0].replace("Chat sobre ", ""); // Ajuste no texto
-
-    await salvarMensagem(currentPetId, remetenteParaSalvar, message);
-    chatMessageInput.value = ""; // Limpa o input
-    await renderizarMensagens(petNomeAtual); // Recarrega as mensagens do chat
-});
-
-
-// --- Lógica do Histórico de Conversas (Tutor/Admin) ---
-verConversasBtn.addEventListener("click", async () => {
-    const usuarioLogadoEmail = localUsuarioAtual ? localUsuarioAtual.email : null;
-    const isAdmin = (usuarioLogadoEmail === "SEU_EMAIL_ADMIN@EXEMPLO.COM"); // ** SUBSTITUA PELO SEU EMAIL DE ADMINISTRADOR REAL **
-
-    if (!usuarioLogadoEmail) { // Se não há usuário logado
-        alert("Você precisa estar logado para ver as conversas.");
-        return;
-    }
-
-    historicoMensagensContainer.innerHTML = ""; // Limpa o histórico anterior
-
-    try {
-        let petsParaHistorico = [];
-
-        if (isAdmin) {
-            // Se for admin, buscar todos os pets para ver todas as conversas
-            const { data, error } = await supabaseClient
-                .from('pets')
-                .select('id, nome, dono_email');
-            if (error) throw new Error("Erro ao buscar todos os pets para admin: " + error.message);
-            petsParaHistorico = data;
-        } else {
-            // Se for cliente (tutor), buscar apenas os pets que pertencem ao cliente logado
-            const { data, error } = await supabaseClient
-                .from('pets')
-                .select('id, nome, dono_email')
-                .eq('dono_email', usuarioLogadoEmail);
-            if (error) throw new Error("Erro ao buscar seus pets: " + error.message);
-            petsParaHistorico = data;
-        }
-
-        if (petsParaHistorico.length === 0) {
-            historicoMensagensContainer.innerHTML = "<p>Nenhuma conversa encontrada para seus pets ou para admin.</p>";
-        } else {
-            for (const pet of petsParaHistorico) {
-                // Buscar todas as mensagens para este pet
-                const { data: mensagensDoPet, error: mensagensError } = await supabaseClient
-                    .from('mensagens_chat')
-                    .select('*')
-                    .eq('pet_id', pet.id)
-                    .order('created_at', { ascending: true });
-
-                if (mensagensError) {
-                    console.error(`Erro ao buscar mensagens para o pet ${pet.nome}:`, mensagensError);
-                    continue; // Pula para o próximo pet se houver erro
-                }
-
-                const bloco = document.createElement("div");
-                bloco.classList.add("historico-bloco");
-                bloco.innerHTML = `<h3>Conversas sobre: ${pet.nome} (Dono: ${pet.dono_email})</h3>`;
-
-                if (mensagensDoPet.length > 0) {
-                    // Agrupar mensagens por remetente (cliente que iniciou a conversa)
-                    const conversasAgrupadas = {};
-                    mensagensDoPet.forEach(msg => {
-                        // Tentar encontrar o "outro lado" da conversa para agrupar
-                        let outroParticipanteEmail;
-                        if (msg.remetente_email === pet.dono_email || msg.remetente_email === "SEU_EMAIL_ADMIN@EXEMPLO.COM") { // ** SUBSTITUA PELO SEU EMAIL DE ADMINISTRADOR REAL **
-                            // Se a mensagem é do dono ou admin, o "outro participante" é quem não é dono/admin
-                            const clientesNaConversa = mensagensDoPet.filter(m =>
-                                m.remetente_email !== pet.dono_email && m.remetente_email !== "SEU_EMAIL_ADMIN@EXEMPLO.COM" // ** SUBSTITUA PELO SEU EMAIL DE ADMINISTRADOR REAL **
-                            ).map(m => m.remetente_email);
-                            outroParticipanteEmail = clientesNaConversa.length > 0 ? clientesNaConversa[0] : "Cliente Desconhecido";
-                        } else {
-                            // Se a mensagem não é do dono nem do admin, ela é de um cliente
-                            outroParticipanteEmail = msg.remetente_email;
-                        }
-
-                        if (!conversasAgrupadas[outroParticipanteEmail]) {
-                            conversasAgrupadas[outroParticipanteEmail] = [];
-                        }
-                        conversasAgrupadas[outroParticipanteEmail].push(msg);
-                    });
-
-                    for (const [participante, msgs] of Object.entries(conversasAgrupadas)) {
-                        const subBlocoConversa = document.createElement("div");
-                        subBlocoConversa.classList.add("conversa-individual");
-                        
-                        // Mostra o email do participante para o tutor/admin
-                        subBlocoConversa.innerHTML = `<h4>Conversa com: ${participante}</h4>`;
-                        
-                        msgs.forEach(msg => {
-                            const linha = document.createElement("p");
-                            const remetenteDisplay = msg.remetente_email === usuarioLogadoEmail ? "Você" : 
-                                                     (msg.remetente_email === "SEU_EMAIL_ADMIN@EXEMPLO.COM" ? "Administrador" : msg.remetente_email); // ** SUBSTITUA PELO SEU EMAIL DE ADMINISTRADOR REAL **
-                            linha.innerHTML = `<strong>${remetenteDisplay}:</strong> ${msg.conteudo} <em>(${new Date(msg.created_at).toLocaleString()})</em>`;
-                            subBlocoConversa.appendChild(linha);
-                        });
-
-                        // Botão de responder para o tutor/admin
-                        if (usuarioLogadoEmail === pet.dono_email || isAdmin) {
-                            const responderBtn = document.createElement("button");
-                            responderBtn.classList.add("responder-btn");
-                            responderBtn.textContent = `Responder a ${participante.split('@')[0]}`; // Mostra só o nome antes do @
-                            responderBtn.dataset.petId = pet.id;
-                            responderBtn.dataset.petNome = pet.nome;
-                            responderBtn.dataset.clienteEmail = participante; // Salva o email do cliente para o chat
-                            subBlocoConversa.appendChild(responderBtn);
-                        }
-
-                        bloco.appendChild(subBlocoConversa);
-                    }
-                } else {
-                    bloco.innerHTML += `<p>Nenhuma mensagem ainda sobre este pet.</p>`;
-                }
-                historicoMensagensContainer.appendChild(bloco);
-            }
-        }
-
-        modalHistorico.classList.remove("hidden");
-        modalHistorico.classList.add("active");
-
-        // Adiciona event listeners para os novos botões "Responder"
-        document.querySelectorAll(".responder-btn").forEach(button => {
-            button.addEventListener("click", (event) => {
-                currentPetId = event.target.dataset.petId;
-                const petNome = event.target.dataset.petNome;
-                const clienteEmailParaChat = event.target.dataset.clienteEmail;
-                
-                // Abre o modal de chat
-                chatPetNome.textContent = `Chat sobre ${petNome} com ${clienteEmailParaChat.split('@')[0]}`;
-                modalHistorico.classList.remove("active"); // Fecha o histórico
-                modalHistorico.classList.add("hidden");
-                modalChat.classList.remove("hidden");
-                modalChat.classList.add("active");
-                renderizarMensagens(petNome); // Recarrega o chat para o pet selecionado
-            });
+    // Upload da imagem para o Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabaseClient.storage
+        .from('pet_fotos') // Certifique-se de que este bucket existe no Supabase Storage
+        .upload(`${Date.now()}-${fotoFile.name}`, fotoFile, {
+            cacheControl: '3600',
+            upsert: false,
         });
 
-    } catch (error) {
-        console.error("Erro ao carregar histórico de conversas:", error);
-        alert("Ocorreu um erro ao carregar o histórico de conversas.");
+    let fotoUrl = null;
+    if (uploadError) {
+        console.error("Erro ao fazer upload da foto:", uploadError.message);
+        alert("Erro ao fazer upload da foto do pet. " + uploadError.message);
+        return;
+    } else {
+        // Obter a URL pública da imagem
+        const { data: publicUrlData } = supabaseClient.storage
+            .from('pet_fotos')
+            .getPublicUrl(uploadData.path);
+        fotoUrl = publicUrlData.publicUrl;
+    }
+
+    const { data, error } = await supabaseClient.from('pets').insert([
+        { 
+            nome: nome,
+            especie: especie,
+            idade: idade,
+            descricao: descricao,
+            dono_email: localUsuarioAtual.email, // Assume que o email do usuário logado é o dono
+            localizacao: enderecoCompleto, // Usa o endereço completo para a coluna de localização
+            latitude: lat,
+            longitude: lng,
+            foto_url: fotoUrl
+        }
+    ]);
+
+    if (error) {
+        alert("Erro ao cadastrar pet: " + error.message);
+        console.error("Erro ao cadastrar pet:", error.message);
+    } else {
+        alert("Pet cadastrado com sucesso!");
+        petForm.reset();
+        modalCadastro.classList.remove("active");
+        modalCadastro.classList.add("hidden");
+        renderizarPets(); // Atualiza a lista e o mapa
     }
 });
 
+async function renderizarPets() {
+    const { data: pets, error } = await supabaseClient
+        .from('pets')
+        .select('*');
 
-// --- Funções de Mapa (Leaflet) ---
-function inicializarMapa() {
-    if (!map) { // Inicializa o mapa apenas uma vez
-        map = L.map('map').setView([-25.4284, -49.2733], 13); // Coordenadas de Curitiba, Brasil
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
+    if (error) {
+        console.error("Erro ao carregar pets:", error.message);
+        return;
     }
+
+    petsArray = pets; // Atualiza o array global de pets
+    const listaPetsDiv = document.getElementById("listaPets");
+    listaPetsDiv.innerHTML = ''; // Limpa a lista existente
+
+    // Renderizar pets na lista
+    if (pets.length === 0) {
+        listaPetsDiv.innerHTML = '<p>Nenhum pet disponível para adoção ainda.</p>';
+    } else {
+        pets.forEach(pet => {
+            const petCard = document.createElement('div');
+            petCard.classList.add('pet-card');
+            petCard.innerHTML = `
+                <img src="${pet.foto_url || 'placeholder.jpg'}" alt="${pet.nome}">
+                <h4>${pet.nome}</h4>
+                <p>Espécie: ${pet.especie}</p>
+                <p>Idade: ${pet.idade} anos</p>
+                <p>Localização: ${pet.localizacao}</p>
+                <p>${pet.descricao}</p>
+                <button class="iniciar-chat-btn" data-pet-id="${pet.id}" ${localUsuarioAtual && localUsuarioAtual.email === pet.dono_email ? 'disabled' : ''}>${localUsuarioAtual && localUsuarioAtual.email === pet.dono_email ? 'É seu Pet' : 'Interessado?'}</button>
+            `;
+            listaPetsDiv.appendChild(petCard);
+        });
+    }
+
+    // Adicionar event listeners para os botões de chat
+    document.querySelectorAll('.iniciar-chat-btn').forEach(button => {
+        button.addEventListener('click', async (event) => {
+            if (!localUsuarioAtual) {
+                alert("Você precisa estar logado para iniciar uma conversa.");
+                modalLogin.classList.remove("hidden");
+                modalLogin.classList.add("active");
+                return;
+            }
+            currentPetId = event.target.dataset.petId;
+            // Carregar mensagens existentes para este pet
+            await carregarMensagens(currentPetId);
+            chatPetNome.textContent = `Chat com ${petsArray.find(p => p.id == currentPetId).nome}`;
+            modalChat.classList.remove("hidden");
+            modalChat.classList.add("active");
+        });
+    });
+
+    renderizarPetsNoMapa(pets); // Atualiza os marcadores no mapa
 }
 
-let markers = []; // Para armazenar os marcadores atuais no mapa
-
-function atualizarMapaComPets(pets) {
+// Renderiza pets no mapa
+function renderizarPetsNoMapa(pets) {
     if (!map) {
-        console.warn("Mapa não inicializado. Chamando inicializarMapa().");
-        inicializarMapa(); // Garante que o mapa esteja inicializado antes de adicionar marcadores
+        console.error("Mapa não inicializado. Não é possível adicionar marcadores");
+        return;
     }
 
     // Remove marcadores antigos
@@ -731,10 +355,228 @@ async function obterCoordenadasDaLocalizacao(localizacao) {
     return { lat: -25.4284, lng: -49.2733 }; 
 }
 
+// --- Funções de Chat ---
+fecharChat.addEventListener("click", () => {
+    modalChat.classList.remove("active");
+    modalChat.classList.add("hidden");
+    chatMessages.innerHTML = ''; // Limpa as mensagens ao fechar
+    chatMessageInput.value = ''; // Limpa o input
+    currentPetId = null; // Reseta o ID do pet do chat
+});
+
+sendMessageBtn.addEventListener("click", enviarMensagem);
+chatMessageInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+        enviarMensagem();
+    }
+});
+
+async function enviarMensagem() {
+    const conteudo = chatMessageInput.value.trim();
+    if (!conteudo || !currentPetId || !localUsuarioAtual) return;
+
+    const { error } = await supabaseClient
+        .from('mensagens_chat')
+        .insert({
+            pet_id: currentPetId,
+            remetente_email: localUsuarioAtual.email,
+            conteudo: conteudo
+        });
+
+    if (error) {
+        alert("Erro ao enviar mensagem: " + error.message);
+        console.error("Erro ao enviar mensagem:", error);
+    } else {
+        chatMessageInput.value = ''; // Limpa o input
+        await carregarMensagens(currentPetId); // Recarrega as mensagens para mostrar a nova
+    }
+}
+
+async function carregarMensagens(petId) {
+    chatMessages.innerHTML = ''; // Limpa mensagens anteriores
+
+    const { data: mensagens, error } = await supabaseClient
+        .from('mensagens_chat')
+        .select('*')
+        .eq('pet_id', petId)
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        console.error("Erro ao carregar mensagens:", error.message);
+        return;
+    }
+
+    if (mensagens.length === 0) {
+        chatMessages.innerHTML = '<p class="info-message">Nenhuma mensagem ainda. Seja o primeiro a enviar!</p>';
+    } else {
+        mensagens.forEach(msg => {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            // Verifica se a mensagem é do usuário logado ou do pet owner/interessado
+            if (msg.remetente_email === localUsuarioAtual.email) {
+                messageDiv.classList.add('sent');
+                messageDiv.textContent = `Você: ${msg.conteudo}`;
+            } else {
+                messageDiv.classList.add('received');
+                const remetenteNome = msg.remetente_email.split('@')[0];
+                messageDiv.textContent = `${remetenteNome}: ${msg.conteudo}`;
+            }
+            chatMessages.appendChild(messageDiv);
+        });
+        // Rola para a última mensagem
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+}
+
+// --- Histórico de Conversas ---
+verConversasBtn.addEventListener("click", async () => {
+    if (!localUsuarioAtual) {
+        alert("Você precisa estar logado para ver o histórico de conversas.");
+        return;
+    }
+
+    try {
+        const historicoMensagensContainer = document.getElementById("historicoMensagensContainer");
+        historicoMensagensContainer.innerHTML = ''; // Limpa o histórico
+
+        const usuarioLogadoEmail = localUsuarioAtual.email;
+        const isAdmin = (usuarioLogadoEmail === "SEU_EMAIL_ADMIN@EXEMPLO.COM"); // Verificação de admin
+
+        // Buscar todos os pets para os quais o usuário logado é o dono OU onde há conversas com o usuário
+        const { data: petsDoUsuario, error: petsError } = await supabaseClient
+            .from('pets')
+            .select('id, nome, dono_email')
+            .or(`dono_email.eq.${usuarioLogadoEmail},mensagens_chat.remetente_email.eq.${usuarioLogadoEmail}`);
+
+        if (petsError) throw petsError;
+
+        if (petsDoUsuario.length === 0 && !isAdmin) {
+            historicoMensagensContainer.innerHTML = '<p>Você não tem pets cadastrados nem conversas iniciadas.</p>';
+        } else {
+            for (const pet of petsDoUsuario) {
+                const { data: mensagens, error: mensagensError } = await supabaseClient
+                    .from('mensagens_chat')
+                    .select('*')
+                    .eq('pet_id', pet.id)
+                    .order('created_at', { ascending: true });
+
+                if (mensagensError) throw mensagensError;
+
+                const bloco = document.createElement("div");
+                bloco.classList.add("historico-bloco");
+                bloco.innerHTML = `<h3>Conversas sobre: ${pet.nome}</h3>`;
+
+                if (mensagens.length > 0) {
+                    const conversasAgrupadas = {};
+
+                    mensagens.forEach(msg => {
+                        let participanteChave;
+                        if (msg.remetente_email === pet.dono_email) {
+                            participanteChave = msg.remetente_email === usuarioLogadoEmail ? "Você (Dono)" : msg.remetente_email;
+                        } else {
+                            participanteChave = msg.remetente_email === usuarioLogadoEmail ? "Você (Interessado)" : msg.remetente_email;
+                        }
+
+                        // Agrupa mensagens por conversante
+                        if (!conversasAgrupadas[participanteChave]) {
+                            conversasAgrupadas[participanteChave] = [];
+                        }
+                        conversasAgrupadas[participanteChave].push(msg);
+                    });
+                    
+                    // Renderiza cada grupo de conversa
+                    for (const remetente in conversasAgrupadas) {
+                        const msgs = conversasAgrupadas[remetente];
+                        const subBloco = document.createElement("div");
+                        subBloco.classList.add("conversa-individual"); // Adiciona classe para estilização
+                        subBloco.innerHTML = `<h4>${remetente === usuarioLogadoEmail ? 'Você' : remetente.split('@')[0]}</h4>`; // Mostra "Você" ou o nome do e-mail
+                        const lista = document.createElement("ul");
+                        msgs.forEach(msg => {
+                            const linha = document.createElement("li");
+                            linha.innerHTML = `[${new Date(msg.created_at).toLocaleString()}]: ${msg.conteudo}`;
+                            lista.appendChild(linha);
+                        });
+                        subBloco.appendChild(lista);
+
+                        // Botão Responder - apenas se não for a própria conversa do usuário logado (ex: interessado falando com dono)
+                        // ou se for o admin
+                        if (remetente !== "Você (Dono)" && remetente !== "Você (Interessado)") {
+                           const responderBtn = document.createElement("button");
+                           responderBtn.classList.add("responder-btn");
+                           responderBtn.textContent = "Responder";
+                           responderBtn.dataset.petId = pet.id;
+                           responderBtn.dataset.remetenteParaResponder = remetente; // Email do outro participante
+                           responderBtn.addEventListener("click", (e) => {
+                                const targetPetId = e.target.dataset.petId;
+                                // Abre o modal de chat para o pet e carrega as mensagens
+                                currentPetId = targetPetId;
+                                chatPetNome.textContent = `Chat com ${pet.nome}`;
+                                carregarMensagens(targetPetId);
+                                modalHistorico.classList.remove("active");
+                                modalHistorico.classList.add("hidden");
+                                modalChat.classList.remove("hidden");
+                                modalChat.classList.add("active");
+                           });
+                           subBloco.appendChild(responderBtn);
+                        }
+                        bloco.appendChild(subBloco);
+                    }
+                    historicoMensagensContainer.appendChild(bloco);
+                } else {
+                    const bloco = document.createElement("div");
+                    bloco.classList.add("historico-bloco");
+                    bloco.innerHTML = `<h3>Conversas sobre: ${pet.nome}</h3><p>Nenhuma mensagem ainda.</p>`;
+                    historicoMensagensContainer.appendChild(bloco);
+                }
+            }
+        }
+
+        modalHistorico.classList.remove("hidden");
+        modalHistorico.classList.add("active");
+
+    } catch (error) {
+        console.error("Erro ao carregar histórico de conversas:", error);
+        alert("Ocorreu um erro ao carregar o histórico de conversas.");
+    }
+});
+
+fecharHistorico.addEventListener("click", () => {
+    modalHistorico.classList.remove("active");
+    modalHistorico.classList.add("hidden");
+});
+
 
 // --- Inicialização ---
 // A ordem é importante:
 // 1. Verificar login (para ajustar UI)
-// 2. Buscar pets (e consequentemente renderizar pets e atualizar mapa)
-buscarPetsDoSupabase(); // Carrega os pets e atualiza o mapa ao iniciar
-// O mapa agora é inicializado em 'DOMContentLoaded' e atualizado após buscarPetsDoSupabase
+// 2. Assinar mudanças em tempo real (para pets e mensagens)
+verificarLogin();
+
+// Assina mudanças na tabela 'pets' em tempo real
+supabaseClient
+    .channel('pets_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'pets' }, payload => {
+        console.log('Change received!', payload);
+        renderizarPets(); // Re-renderiza pets sempre que houver uma mudança
+    })
+    .subscribe();
+
+// Assina mudanças na tabela 'mensagens_chat' em tempo real
+supabaseClient
+    .channel('mensagens_chat_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'mensagens_chat' }, payload => {
+        console.log('Mensagem de chat recebida!', payload);
+        // Se a mensagem for para o pet do chat atual, recarregue as mensagens
+        if (currentPetId && payload.new && payload.new.pet_id == currentPetId) {
+            carregarMensagens(currentPetId);
+        } else if (payload.new && payload.new.remetente_email === localUsuarioAtual.email ||
+                   payload.new && petsArray.find(p => p.id === payload.new.pet_id && p.dono_email === localUsuarioAtual.email)) {
+            // Se a mudança for relevante para o histórico de conversas do usuário logado
+            // (ou se ele for admin), pode ser útil recarregar o histórico se o modal estiver aberto.
+            // Por simplicidade, vamos apenas renderizar os pets, o que garante que os contadores de chat
+            // ou botões de "interessado" se atualizem se houver tal lógica.
+            // Se o modal do histórico estiver aberto, você poderia chamar verConversasBtn.click()
+            // ou uma função similar para atualizá-lo.
+        }
+    })
+    .subscribe();

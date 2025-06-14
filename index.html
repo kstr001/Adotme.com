@@ -34,7 +34,8 @@
 
   <section class="mapa-pets">
     <h3>Veja no mapa os pets disponíveis</h3>
-    <div id="map" style="height: 400px;"></div> </section>
+    <div id="map" style="height: 400px;"></div>
+  </section>
 
   <footer>
     <p>&copy; 2024 Adote um Pet. Todos os direitos reservados.</p>
@@ -44,24 +45,32 @@
     <div class="modal-content">
       <span class="close" id="fecharModal">&times;</span>
       <h2>Cadastrar Novo Pet</h2>
-      <form id="cadastroPetForm">
-        <label for="nomePet">Nome:</label>
-        <input type="text" id="nomePet" required />
+      <form id="petForm">
+        <label for="nome">Nome do Pet:</label>
+        <input type="text" id="nome" required>
 
-        <label for="especiePet">Espécie:</label>
-        <input type="text" id="especiePet" required />
+        <label for="especie">Espécie:</label>
+        <select id="especie" required>
+          <option value="">Selecione...</option>
+          <option value="Cachorro">Cachorro</option>
+          <option value="Gato">Gato</option>
+          <option value="Outro">Outro</option>
+        </select>
 
-        <label for="racaPet">Raça:</label>
-        <input type="text" id="racaPet" required />
+        <label for="idade">Idade (anos):</label>
+        <input type="number" id="idade" min="0" required>
 
-        <label for="idadePet">Idade (anos):</label>
-        <input type="number" id="idadePet" required />
+        <label for="descricao">Descrição:</label>
+        <textarea id="descricao" rows="4" required></textarea>
 
-        <label for="localizacaoPet">Localização:</label>
-        <input type="text" id="localizacaoPet" required />
+        <label for="cep">CEP:</label>
+        <input type="text" id="cep" required placeholder="Ex: 80000-000">
 
-        <label for="fotoPet">Foto do Pet:</label>
-        <input type="file" id="fotoPet" accept="image/*" />
+        <label for="endereco">Endereço:</label>
+        <input type="text" id="endereco" required placeholder="Rua, número, bairro, cidade, estado">
+        
+        <label for="petFoto">Foto do Pet:</label>
+        <input type="file" id="petFoto" accept="image/*" required>
 
         <button type="submit">Cadastrar Pet</button>
       </form>
@@ -70,14 +79,14 @@
 
   <div id="modalLogin" class="modal hidden">
     <div class="modal-content">
-      <span class="close" id="fecharModalLogin">&times;</span>
+      <span class="close" id="fecharLogin">&times;</span>
       <h2>Login</h2>
       <form id="loginForm">
         <label for="emailLogin">E-mail:</label>
-        <input type="email" id="emailLogin" required />
+        <input type="email" id="emailLogin" required>
 
         <label for="senhaLogin">Senha:</label>
-        <input type="password" id="senhaLogin" required />
+        <input type="password" id="senhaLogin" required>
 
         <button type="submit">Entrar</button>
       </form>
@@ -120,11 +129,11 @@
     <span id="fecharHistorico" class="close">&times;</span>
     <h2>Mensagens e Histórico de Conversas</h2>
     <div id="historicoMensagensContainer">
-      </div>
+        </div>
   </div>
 </div>
 
-<script src="script.js"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
