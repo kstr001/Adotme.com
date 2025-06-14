@@ -1,5 +1,5 @@
 const SUPABASE_URL = "https://ymfmlqzwnzmtuvuhavbt.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZm1scXp3bnptdHV2dWhhdmJ0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTg5Mzg4OSwiZXhwIjoyMDY1NDY5ODg5fQ.7CP9ysj_k0GG2YVeD3Fs_BWe9aXkyaO4i-L8k6ghWmg";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZm1scXp3bnptdHV2dWhhdmJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4OTM4ODksImV4cCI6MjA2NTQ2OTg4OX0.eimoL0JlSCxHAnrfl5WwwiOnvJznBxh-FFQYl7NSKFk";
 
 // --- Inicialização do Supabase Client (melhor prática) ---
 const { createClient } = supabase;
@@ -501,10 +501,18 @@ function addMessageToChat(message, type) {
 }
 
 // Event listener para enviar mensagem
-sendMessageBtn.addEventListener("click", () => {
+sendMessageBtn.addEventListener("click", async () => { // Certifique-se que é async
     const message = chatMessageInput.value.trim();
     const clienteEmail = localStorage.getItem("clienteLogadoEmail");
     const isAdmin = localStorage.getItem("logadoAdmin");
+    const petNome = chatPetNome.textContent.replace("Chat com ", "").replace("Mensagens do seu pet: ", ""); // Obtenha o nome do pet
+
+    const petEncontrado = petsArray.find(p => p.nome === petNome); // Encontre o objeto pet completo
+    if (!petEncontrado) {
+        alert("Erro: Pet não encontrado para enviar mensagem.");
+        return;
+    }
+    const petId = petEncontrado.id; // Pegue o ID do pet
 
     let remetente = "desconhecido";
     if (clienteEmail) {
@@ -513,9 +521,9 @@ sendMessageBtn.addEventListener("click", () => {
         remetente = "admin";
     }
 
-    if (message) {
-        salvarMensagem(chatPetNome.textContent.replace("Chat com ", ""), remetente, message);
-        renderizarMensagens(chatPetNome.textContent.replace("Chat com ", ""));
+    if (message && petId) { // Verifique se há mensagem e ID do pet
+        await salvarMensagem(petId, remetente, message); // Passe o petId
+        await renderizarMensagens(petNome); // Recarrega as mensagens do chat
         chatMessageInput.value = "";
     }
 });
@@ -561,9 +569,8 @@ function atualizarListaPets(currentPetsArray) {
     });
 
     document.querySelectorAll(".chat-pet-btn").forEach(button => {
-        button.addEventListener("click", (e) => {
+        button.addEventListener("click", async (e) => { // Tornar async
             const petNome = e.target.dataset.petNome;
-            renderizarMensagens(petNome);
 
             chatPetNome.textContent = `Chat com ${petNome}`;
             const clienteEmail = localStorage.getItem("clienteLogadoEmail");
@@ -574,7 +581,9 @@ function atualizarListaPets(currentPetsArray) {
             }
             modalChat.classList.remove("hidden");
             modalChat.classList.add("active");
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            await renderizarMensagens(petNome); // Chamar renderizarMensagens para carregar do DB
+            chatMessages.scrollTop = chatMessages.scrollHeight; // Rola para o final
         });
     });
 
@@ -610,39 +619,75 @@ function atualizarListaPets(currentPetsArray) {
     });
 }
 
-function salvarMensagem(petNome, remetente, conteudo) {
-    const mensagens = JSON.parse(localStorage.getItem("mensagensChat") || "[]");
-    mensagens.push({ pet: petNome, remetente, conteudo, data: new Date().toISOString() });
-    localStorage.setItem("mensagensChat", JSON.stringify(mensagens));
+async function salvarMensagem(petId, remetente, conteudo) { // Agora 'async' e recebe petId
+    try {
+        const { data, error } = await supabaseClient
+            .from('mensagens_chat') // Sua nova tabela de mensagens
+            .insert([
+                {
+                    pet_id: petId, // Use o ID do pet
+                    remetente_email: remetente, // O email do remetente
+                    conteudo: conteudo
+                }
+            ])
+            .select(); // Retorna o registro inserido
+
+        if (error) {
+            throw new Error("Erro ao salvar mensagem no Supabase: " + error.message);
+        }
+        console.log("Mensagem salva no Supabase:", data);
+    } catch (err) {
+        console.error(err);
+        alert("Erro ao enviar mensagem.");
+    }
 }
 
-function renderizarMensagens(petNome) {
-    const mensagens = JSON.parse(localStorage.getItem("mensagensChat") || "[]");
-    const clienteEmail = localStorage.getItem("clienteLogadoEmail");
-    const isAdmin = localStorage.getItem("logadoAdmin");
+async function renderizarMensagens(petNome) { // Agora 'async'
+    chatMessages.innerHTML = ""; // Limpa antes de adicionar
 
-    const remetenteAtual = localStorage.getItem("clienteLogadoEmail") || (localStorage.getItem("logadoAdmin") ? "admin" : "desconhecido");
-    const isTutor = petsArray.some(p => p.nome === petNome && p.dono_email === clienteEmail);
+    const petEncontrado = petsArray.find(p => p.nome === petNome);
+    if (!petEncontrado) {
+        console.error("Pet não encontrado:", petNome);
+        return;
+    }
+    const petId = petEncontrado.id; // Obtenha o ID do pet
 
-    mensagens
-    .filter(msg => msg.pet === petNome)
-    .forEach(msg => {
-        let tipo;
-        if (isTutor) {
-            tipo = msg.remetente === "admin" || msg.remetente === clienteEmail ? "sent" : "received";
-        } else {
-            tipo = msg.remetente === remetenteAtual ? "sent" : "received";
+    try {
+        const { data: mensagens, error } = await supabaseClient
+            .from('mensagens_chat')
+            .select('*')
+            .eq('pet_id', petId) // Filtra as mensagens pelo ID do pet
+            .order('created_at', { ascending: true }); // Ordena pela data para exibir na ordem correta
+
+        if (error) {
+            throw new Error("Erro ao buscar mensagens no Supabase: " + error.message);
         }
-        addMessageToChat(msg.conteudo, tipo);
-    });
-    chatMessages.innerHTML = "";
 
-    mensagens
-        .filter(msg => msg.pet === petNome)
-        .forEach(msg => {
-            const tipo = msg.remetente === remetenteAtual ? "sent" : "received";
+        const clienteEmail = localStorage.getItem("clienteLogadoEmail");
+        const isAdmin = localStorage.getItem("logadoAdmin");
+
+        let usuarioLogadoNoMomento = null;
+        if (clienteEmail) {
+            usuarioLogadoNoMomento = clienteEmail;
+        } else if (isAdmin) {
+            usuarioLogadoNoMomento = "admin";
+        }
+
+        mensagens.forEach(msg => {
+            let tipo;
+            if (msg.remetente_email === usuarioLogadoNoMomento) { // Use 'remetente_email' da DB
+                tipo = "sent";
+            } else {
+                tipo = "received";
+            }
             addMessageToChat(msg.conteudo, tipo);
         });
+
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    } catch (err) {
+        console.error(err);
+        alert("Erro ao carregar mensagens.");
+    }
 }
 
 const dropArea = document.getElementById("dropArea");
