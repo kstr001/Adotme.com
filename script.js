@@ -1,4 +1,4 @@
-const SUPABASE_URL = "https://ymfmlqzwnzmtuvuhavbt.supabase.co";
+const SUPABASE_URL = "https://supabase.com/dashboard/project/ymfmlqzwnzmtuvuhavbt/settings/api-keys";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZm1scXp3bnptdHV2dWhhdmJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4OTM4ODksImV4cCI6MjA2NTQ2OTg4OX0.eimoL0JlSCxHAnrfl5WwwiOnvJznBxh-FFQYl7NSKFb";
 
 // --- Inicialização do Supabase Client (melhor prática) ---
