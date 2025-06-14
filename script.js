@@ -230,12 +230,16 @@ petForm.addEventListener("submit", async (e) => {
     }
 
     // Upload da imagem para o Supabase Storage
+    const user = supabaseClient.auth.getUser(); // ou o que você já tiver como usuário logado
+
+    const filePath = `${user.id}/${Date.now()}-${fotoFile.name}`;
+
     const { data: uploadData, error: uploadError } = await supabaseClient.storage
-        .from('pet-fotos') // Certifique-se de que este bucket existe no Supabase Storage
-        .upload(`${Date.now()}-${fotoFile.name}`, fotoFile, {
-            cacheControl: '3600',
-            upsert: false,
-        });
+    .from('pet-fotos')
+    .upload(filePath, fotoFile, {
+        cacheControl: '3600',
+        upsert: false,
+    });
 
     let fotoUrl = null;
     if (uploadError) {
