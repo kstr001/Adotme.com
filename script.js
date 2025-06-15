@@ -346,12 +346,19 @@ async function buscarEnderecoPorCEP(cep) {
 
 
 async function renderizarPets() {
-    const { data: pets, error } = await supabaseClient
-        .from('pets')
-        .select('*');
+    const petsListContainer = document.getElementById("listaPetsContainer");
+    if (!petsListContainer) {
+        console.error("Elemento 'listaPetsContainer' não encontrado.");
+        return;
+    }
+    petsListContainer.innerHTML = ''; // Limpa a lista existente
+
+    const { data, error } = await supabaseClient.from("pets").select("*");
 
     if (error) {
-        console.error("Erro ao carregar pets:", error.message);
+        // MUITO IMPORTANTE: Mantenha esta linha para depuração!
+        console.error("Erro ao carregar pets na renderização:", error.message, error.details, error.hint, error.code, error);
+        petsListContainer.innerHTML = "<p>Erro ao carregar pets.</p>";
         return;
     }
 
