@@ -351,13 +351,14 @@ async function renderizarPets() {
         console.error("Elemento 'listaPetsContainer' não encontrado.");
         return;
     }
-    petsListContainer.innerHTML = ''; // Limpa a lista existente
+    petsListContainer.innerHTML = '';
 
+    console.log("Tentando carregar pets do Supabase..."); // ADICIONE ESTA LINHA
     const { data, error } = await supabaseClient.from("pets").select("*");
+    console.log("Resposta da consulta de pets:", { data, error }); // ADICIONE ESTA LINHA
 
     if (error) {
-        // MUITO IMPORTANTE: Mantenha esta linha para depuração!
-        console.error("Erro ao carregar pets na renderização:", error.message, error.details, error.hint, error.code, error);
+        console.error("ERRO DETALHADO AO CARREGAR PETS:", error.message, error.details, error.hint, error.code, error);
         petsListContainer.innerHTML = "<p>Erro ao carregar pets.</p>";
         return;
     }
