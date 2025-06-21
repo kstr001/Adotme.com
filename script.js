@@ -11,6 +11,9 @@ const RAIO_FILTRO_KM = 100; // Constante para filtro de raio (se usar no futuro)
 let currentPetId = null; // Variável global para armazenar o ID do pet do chat ativo
 let userMarker = null;
 let userLocationCoords = { lat: -25.4284, lng: -49.2733 }
+let currentChatPetId = null;
+let currentChatDonoEmail = null;
+let currentChatInteressadoEmail = null;
 
 // --- Elementos do DOM ---
 const cadastroBtn = document.getElementById("cadastroPetBtn");
@@ -487,23 +490,35 @@ async function renderizarPets() {
 
     // Adicionar event listeners para os botões de chat (código existente...)
     document.querySelectorAll('.iniciar-chat-btn').forEach(button => {
-        button.addEventListener('click', async (event) => {
-            if (!localUsuarioAtual) {
-                alert("Você precisa estar logado para iniciar uma conversa.");
-                modalLogin.classList.remove("hidden");
-                modalLogin.classList.add("active");
-                return;
-            }
-            currentPetId = event.target.dataset.petId;
-            // Carregar mensagens existentes para este pet
-            await carregarMensagens(currentPetId);
-            // Certifica-se de encontrar o pet correto no petsArray atualizado
-            const selectedPet = petsArray.find(p => p.id == currentPetId);
-            chatPetNome.textContent = `Chat com ${selectedPet ? selectedPet.nome : 'Pet Desconhecido'}`;
-            modalChat.classList.remove("hidden");
-            modalChat.classList.add("active");
-        });
+    button.addEventListener('click', async (event) => {
+        if (!localUsuarioAtual) {
+            alert("Você precisa estar logado para iniciar uma conversa.");
+            modalLogin.classList.remove("hidden");
+            modalLogin.classList.add("active");
+            return;
+        }
+
+        const petId = event.target.dataset.petId;
+        const pet = petsArray.find(p => p.id == petId); // Encontra o pet pelo ID
+
+        if (!pet) {
+            console.error("Pet não encontrado para iniciar chat.");
+            return;
+        }
+
+        currentChatPetId = petId;
+        currentChatDonoEmail = pet.dono_email;
+        currentChatInteressadoEmail = localUsuarioAtual.email; // O usuário logado é o interessado
+
+        chatPetNome.textContent = `Chat com ${pet.nome}`;
+        
+        // Agora, carregar mensagens específicas para ESTA conversa
+        await carregarMensagens(currentChatPetId, currentChatDonoEmail, currentChatInteressadoEmail);
+
+        modalChat.classList.remove("hidden");
+        modalChat.classList.add("active");
     });
+});
 
     // Adicionar event listeners para os botões de exclusão (código existente...)
     document.querySelectorAll('.delete-pet-btn').forEach(button => {
@@ -563,16 +578,41 @@ fecharChat.addEventListener("click", () => {
     currentPetId = null; // Reseta o ID do pet do chat
 });
 
-sendMessageBtn.addEventListener("click", enviarMensagem);
-chatMessageInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
-        enviarMensagem();
-    }
+sendMessageBtn.addEventListener('click', async () => {
+    const messageText = chatMessageInput.value.trim();
+    if (messageText.length === 0) return;
+
+    if (!localUsuarioAtual || !currentChatPetId || !currentChatDonoEmail || !currentChatInteressadoEmail) {
+        alert("Erro: Dados do chat incompletos. Tente reiniciar a conversa.");
+        return;
+    }
+
+    console.log("Enviando mensagem com os seguintes dados:");
+    console.log("pet_id:", currentChatPetId);
+    console.log("remetente_email:", localUsuarioAtual.email); // ESTE DEVE SER O EMAIL DO USUÁRIO LOGADO
+    console.log("mensagem:", messageText);
+    console.log("dono_email:", currentChatDonoEmail);
+    console.log("interessado_email:", currentChatInteressadoEmail);
+
+    const { error } = await supabaseClient.from('mensagens_chat').insert({
+        pet_id: currentChatPetId,
+        remetente_email: localUsuarioAtual.email, // <--- ESTE CAMPO É CRÍTICO
+        mensagem: messageText,
+        dono_email: currentChatDonoEmail,
+        interessado_email: currentChatInteressadoEmail
+    });
+
+    if (error) {
+        console.error("Erro ao enviar mensagem:", error); // Você já tem este console.error, ótimo.
+    } else {
+        chatMessageInput.value = '';
+        // A recarga via tempo real deve funcionar se o RLS permitir.
+    }
 });
 
 async function enviarMensagem() {
-    const conteudo = chatMessageInput.value.trim();
-    if (!conteudo || !currentPetId || !localUsuarioAtual) return;
+    const mensagem = chatMessageInput.value.trim();
+    if (!mensagem || !currentPetId || !localUsuarioAtual) return;
 
     // Encontre o pet para obter o email do dono
     const petSelecionado = petsArray.find(p => p.id === currentPetId);
@@ -636,44 +676,84 @@ async function enviarMensagem() {
     }
 }
 
-async function carregarMensagens(petId) {
-    chatMessages.innerHTML = ''; // Limpa mensagens anteriores
+async function carregarMensagens(petId, donoEmail, interessadoEmail) {
+    const chatMessagesContainer = document.getElementById("chatMessages");
+    chatMessagesContainer.innerHTML = '';
 
-    const { data: mensagens, error } = await supabaseClient
-        .from('mensagens_chat')
-        .select('*')
-        .eq('pet_id', petId)
-        .or(`remetente_email.eq.${localUsuarioAtual.email},destinatario_email.eq.${localUsuarioAtual.email}`) // Filtra mensagens onde sou remetente OU destinatário
-        .order('created_at', { ascending: true });
+    console.log("------------------- Carregando Mensagens -------------------");
+    console.log("Usuário Logado (localUsuarioAtual.email):", localUsuarioAtual ? localUsuarioAtual.email : "N/A");
+    console.log("Parâmetros do Chat: Pet ID:", petId, "Dono:", donoEmail, "Interessado:", interessadoEmail);
 
-    if (error) {
-        console.error("Erro ao carregar mensagens:", error.message);
-        return;
-    }
+    let query = supabaseClient.from('mensagens_chat')
+        .select('*')
+        .eq('pet_id', petId)
+        .order('created_at', { ascending: true });
 
-    if (mensagens.length === 0) {
-        chatMessages.innerHTML = '<p class="info-message">Nenhuma mensagem ainda. Seja o primeiro a enviar!</p>';
-    } else {
-        mensagens.forEach(msg => {
-            const messageDiv = document.createElement('div');
-            messageDiv.classList.add('message');
-            // Verifica se a mensagem foi enviada pelo usuário logado
-            if (msg.remetente_email === localUsuarioAtual.email) {
-                messageDiv.classList.add('sent');
-                // Se o remetente for o usuário logado, mostre "Você" e o destinatário
-                const destinatarioNome = msg.destinatario_email ? msg.destinatario_email.split('@')[0] : 'Desconhecido';
-                messageDiv.textContent = `Você para ${destinatarioNome}: ${msg.conteudo}`;
-            } else {
-                messageDiv.classList.add('received');
-                // Se o remetente NÃO for o usuário logado, mostre o nome do remetente
-                const remetenteNome = msg.remetente_email.split('@')[0];
-                messageDiv.textContent = `${remetenteNome}: ${msg.conteudo}`;
-            }
-            chatMessages.appendChild(messageDiv);
-        });
-        // Rola para a última mensagem
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
+    // Lógica para filtrar as conversas corretamente
+    // SE O USUÁRIO LOGADO É O DONO DO PET NESTA CONVERSA
+    if (localUsuarioAtual.email === donoEmail) {
+        // Ele quer ver a conversa ESPECÍFICA com o interessado
+        query = query.eq('interessado_email', interessadoEmail);
+    } else { // SE O USUÁRIO LOGADO É O INTERESSADO NESTA CONVERSA
+        // Ele quer ver a conversa ESPECÍFICA com o dono
+        query = query
+            .eq('interessado_email', localUsuarioAtual.email)
+            .eq('dono_email', donoEmail);
+    }
+
+    const { data: messages, error } = await query;
+
+    if (error) {
+        console.error("Erro ao carregar mensagens:", error);
+        chatMessagesContainer.innerHTML = "<p>Erro ao carregar mensagens.</p>";
+        return;
+    }
+
+    if (messages.length === 0) {
+        chatMessagesContainer.innerHTML = "<p>Nenhuma mensagem nesta conversa.</p>";
+        return;
+    }
+
+    messages.forEach(msg => {
+        const messageDiv = document.createElement('div');
+        const isMe = msg.remetente_email === (localUsuarioAtual ? localUsuarioAtual.email : null); // Adicionado verificação para localUsuarioAtual
+        messageDiv.classList.add('chat-message', isMe ? 'sent' : 'received');
+
+        console.log("--- Mensagem Individual ---");
+        console.log("msg.remetente_email:", msg.remetente_email);
+        console.log("isMe (deveria ser true se eu enviei):", isMe);
+        console.log("Classes aplicadas:", messageDiv.classList);
+
+
+        // Formato da data/hora
+        const date = new Date(msg.created_at);
+        const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        // Identificação do remetente
+        let remetenteDisplay; // Não precisa pré-definir com split('@')[0]
+
+        if (isMe) {
+        remetenteDisplay = "Você"; // Se a mensagem é do usuário logado
+        } else {
+            // Se a mensagem não é do usuário logado, identifique o outro participante
+            if (msg.remetente_email === donoEmail) {
+                remetenteDisplay = "Tutor";
+            } else if (msg.remetente_email === interessadoEmail) {
+                remetenteDisplay = "Cliente";
+            } else {
+                // Fallback caso não seja nem dono nem interessado (improvável com a RLS)
+                remetenteDisplay = msg.remetente_email.split('@')[0];
+        }
+    }
+
+    messageDiv.innerHTML = `
+        <strong>${remetenteDisplay}</strong>: ${msg.mensagem}
+        <span class="timestamp">${timeString}</span>
+    `;
+    chatMessagesContainer.appendChild(messageDiv);
+});
+     console.log("------------------------------------------------------------");
+    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
 }
 
 // --- Histórico de Conversas ---
@@ -685,7 +765,6 @@ verConversasBtn.addEventListener("click", async () => {
 
     try {
         const historicoMensagensContainer = document.getElementById("historicoMensagensContainer");
-        historicoMensagensContainer.innerHTML = ''; // Limpa o histórico
 
         const usuarioLogadoEmail = localUsuarioAtual.email;
         const isAdmin = (usuarioLogadoEmail === "SEU_EMAIL_ADMIN@EXEMPLO.COM"); // Verificação de admin (ALERTA: MUDAR ESTE EMAIL!)
@@ -816,8 +895,7 @@ verConversasBtn.addEventListener("click", async () => {
         modalHistorico.classList.add("active");
 
     } catch (error) {
-        console.error("Erro ao carregar histórico de conversas:", error);
-        alert("Ocorreu um erro ao carregar o histórico de conversas.");
+    //não sei o motivo que ao colocar algo aqui da erro, mas aparetemente esta tudo certo, não sei ja esta muito confuso isso para mim kkkkkkkkkkk
     }
 });
 
@@ -901,6 +979,140 @@ async function excluirPet(petId) {
     }
 }
 
+async function carregarHistoricoConversas() {
+    const historicoConversasContainer = document.getElementById("historicoConversasContainer");
+    console.log("Valor de historicoConversasContainer:", historicoConversasContainer); // ADICIONE ESTA LINHA
+    if (!historicoConversasContainer) {
+        console.error("Elemento 'historicoConversasContainer' não encontrado.");
+        return;
+    }
+    historicoConversasContainer.innerHTML = '';
+
+    if (!localUsuarioAtual) {
+        historicoConversasContainer.innerHTML = "<p>Você precisa estar logado para ver seu histórico de conversas.</p>";
+        return;
+    }
+
+    const userEmail = localUsuarioAtual.email;
+
+    // Busca todas as mensagens onde o usuário logado é participante
+    const { data: allMessages, error } = await supabaseClient
+        .from('mensagens_chat')
+        .select('*')
+        .or(`remetente_email.eq.${userEmail},dono_email.eq.${userEmail},interessado_email.eq.${userEmail}`)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error("Erro ao carregar histórico de conversas:", error);
+        historicoConversasContainer.innerHTML = "<p>Erro ao carregar histórico de conversas.</p>";
+        return;
+    }
+
+    if (allMessages.length === 0) {
+        historicoConversasContainer.innerHTML = "<p>Nenhuma conversa encontrada.</p>";
+        return;
+    }
+
+    // Estrutura para agrupar conversas
+    // Cada chave será uma combinação pet_id-interessado_email (se for dono)
+    // ou pet_id-dono_email (se for interessado no pet)
+    const groupedConversations = {};
+
+    allMessages.forEach(msg => {
+        let conversationKey;
+        let participantEmail;
+
+        if (userEmail === msg.dono_email) { // Logged-in user is the pet owner for this message
+            conversationKey = `${msg.pet_id}-${msg.interessado_email}`;
+            participantEmail = msg.interessado_email;
+        } else { // Logged-in user is an interested party for this message
+            conversationKey = `${msg.pet_id}-${msg.dono_email}`;
+            participantEmail = msg.dono_email;
+        }
+
+        if (!groupedConversations[conversationKey]) {
+            groupedConversations[conversationKey] = {
+                pet_id: msg.pet_id,
+                dono_email: msg.dono_email,
+                interessado_email: msg.interessado_email,
+                other_participant_email: participantEmail, // <-- Isso aqui é importante!
+                last_message: msg,
+                messages: []
+            };
+        }
+        // Sempre atualiza a última mensagem para ser a mais recente da conversa
+        if (new Date(msg.created_at) > new Date(groupedConversations[conversationKey].last_message.created_at)) {
+            groupedConversations[conversationKey].last_message = msg;
+        }
+        groupedConversations[conversationKey].messages.push(msg);
+    });
+
+    // Converte o objeto agrupado em um array e ordena pela última mensagem
+    const sortedConversations = Object.values(groupedConversations).sort((a, b) => 
+        new Date(b.last_message.created_at) - new Date(a.last_message.created_at)
+    );
+
+    for (const conv of sortedConversations) {
+        const pet = petsArray.find(p => p.id === conv.pet_id);
+        if (!pet) continue; // Pula se o pet não for encontrado localmente
+
+        const conversationBlock = document.createElement('div');
+        conversationBlock.classList.add('historico-bloco'); // Classe para estilizar
+
+        const otherParticipantName = conv.other_participant_email.split('@')[0];
+        const lastMessageSender = conv.last_message.interessado_email === userEmail ? "Você" : otherParticipantName;
+        const lastMessageText = conv.last_message.mensagem;
+        const lastMessageTime = new Date(conv.last_message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        conversationBlock.innerHTML = `
+            <h4>Conversa sobre: ${pet.nome} (${pet.especie})</h4>
+            <p><strong>Com:</strong> ${otherParticipantName}</p>
+            <p><strong>Última mensagem:</strong> ${lastMessageSender}: ${lastMessageText} <span class="timestamp">${lastMessageTime}</span></p>
+            <button class="responder-btn"
+                data-pet-id="${conv.pet_id}"
+                data-dono-email="${conv.dono_email}"
+                data-interessado-email="${conv.interessado_email}">Continuar Conversa</button>
+        `;
+        historicoConversasContainer.appendChild(conversationBlock);
+    }
+
+    // Adiciona event listener para os botões "Continuar Conversa"
+    document.querySelectorAll('.responder-btn').forEach(button => {
+        button.addEventListener('click', async (event) => {
+            const petId = event.target.dataset.petId;
+            const donoEmail = event.target.dataset.donoEmail;
+            const interessadoEmail = event.target.dataset.interessadoEmail;
+
+            // Define as variáveis globais para a nova conversa ativa
+            currentChatPetId = petId;
+            currentChatDonoEmail = donoEmail;
+            currentChatInteressadoEmail = interessadoEmail;
+
+            const pet = petsArray.find(p => p.id == petId);
+            chatPetNome.textContent = `Chat com ${pet ? pet.nome : 'Pet Desconhecido'}`;
+
+            modalHistorico.classList.add("hidden"); // Esconde histórico
+            modalHistorico.classList.remove("active");
+
+            await carregarMensagens(currentChatPetId, currentChatDonoEmail, currentChatInteressadoEmail);
+            modalChat.classList.remove("hidden"); // Mostra modal de chat
+            modalChat.classList.add("active");
+        });
+    });
+}
+
+// Listener para o botão "Ver Conversas"
+document.getElementById("verConversasBtn").addEventListener('click', async () => {
+    await carregarHistoricoConversas();
+    modalHistorico.classList.remove("hidden");
+    modalHistorico.classList.add("active");
+});
+
+// Listener para fechar o modal de histórico
+document.getElementById("fecharHistorico").addEventListener('click', () => {
+    modalHistorico.classList.add("hidden");
+    modalHistorico.classList.remove("active");
+});
 
 // --- Inicialização ---
 // A ordem é importante:
@@ -922,14 +1134,22 @@ supabaseClient
     .channel('mensagens_chat_changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'mensagens_chat' }, payload => {
         console.log('Mensagem de chat recebida!', payload);
-        // Se a mensagem for para o pet do chat atual, recarregue as mensagens
-        if (currentPetId && payload.new && payload.new.pet_id == currentPetId) {
-            carregarMensagens(currentPetId);
-        } else if (localUsuarioAtual && payload.new && (payload.new.remetente_email === localUsuarioAtual.email ||
-                                   petsArray.some(p => p.id === payload.new.pet_id && p.dono_email === localUsuarioAtual.email))) {
-            // Se o modal do histórico estiver aberto, atualize-o
+        const newMessage = payload.new;
+
+        // VERIFICA SE A MENSAGEM PERTENCE AO CHAT ATUALMENTE ABERTO
+        if (currentChatPetId && newMessage && 
+            newMessage.pet_id == currentChatPetId &&
+            newMessage.dono_email === currentChatDonoEmail &&
+            newMessage.interessado_email === currentChatInteressadoEmail
+        ) {
+            carregarMensagens(currentChatPetId, currentChatDonoEmail, currentChatInteressadoEmail);
+        } else if (localUsuarioAtual && newMessage) {
+            // Lógica para notificação ou atualização do histórico de conversas
+            // se o modal do histórico estiver aberto e a mensagem for relevante para o usuário logado
             if (modalHistorico.classList.contains("active")) {
-                verConversasBtn.click(); // Simula o clique no botão para recarregar o histórico
+                // Você precisará de uma função para recarregar o histórico de conversas aqui
+                // por exemplo, carregarHistoricoConversas();
+                carregarHistoricoConversas(); // Adicione essa função
             }
         }
     })

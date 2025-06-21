@@ -382,12 +382,23 @@ footer {
     overflow-y: auto;
 }
 
+.historico-list {
+    max-height: 400px; /* Ou a altura que preferir */
+    overflow-y: auto; /* Adiciona barra de rolagem se o conteúdo for muito grande */
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 5px;
+    margin-top: 15px;
+    background-color: #f9f9f9;
+}
+
 .historico-bloco {
-    border: 1px solid #e0e0e0;
+    background-color: #fff;
+    border: 1px solid #ddd;
     border-radius: 8px;
     padding: 15px;
-    margin-bottom: 20px;
-    background-color: #f9f9f9;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .historico-bloco h3 {
