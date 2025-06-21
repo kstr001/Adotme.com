@@ -235,8 +235,9 @@ if (recuperarSenhaForm) {
 
         try {
             const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-                redirectTo: window.location.origin + '/nova-senha.html'
+                redirectTo: 'https://adotmecom.vercel.app/nova-senha.html'
             });
+
 
             if (error) {
                 console.error('Erro ao enviar link de recuperação:', error.message);
