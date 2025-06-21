@@ -593,3 +593,18 @@ footer {
     align-items: center;
     justify-content: center;
 }
+#esqueceuSenhaBtn {
+    background: none;
+    border: none;
+    color: #007bff;
+    font-size: 0.95rem;
+    margin-top: 10px;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.3s ease;
+}
+
+#esqueceuSenhaBtn:hover {
+    color: #0056b3;
+    text-decoration: none;
+}
