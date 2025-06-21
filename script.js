@@ -198,8 +198,6 @@ async function verificarLogin() {
         usuarioLogadoDisplay.style.display = "none";
         cadastroBtn.style.display = "none"; // Esconde o botão se ninguém estiver logado
     }
-
-    renderizarPets();
 }
 
 // Função para obter a localização do usuário e centralizar o mapa
