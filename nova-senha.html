@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redefinir Senha</title>
+    <link rel="stylesheet" href="style.css"> <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container-redefinir">
+        <h2>Definir Nova Senha</h2>
+        <form id="redefinirSenhaForm">
+            <label for="novaSenha">Nova Senha:</label>
+            <input type="password" id="novaSenha" required minlength="6">
+
+            <label for="confirmaNovaSenha">Confirmar Nova Senha:</label>
+            <input type="password" id="confirmaNovaSenha" required>
+
+            <button type="submit">Redefinir Senha</button>
+        </form>
+        <p id="mensagemRedefinicao"></p>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://ymfmlqzwnzmtuvuhavbt.supabase.co"; // SUBSTITUA PELA SUA PROJECT URL DO SUPABASE
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZm1scXp3bnptdHV2dWhhdmJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4OTM4ODksImV4cCI6MjA2NTQ2OTg4OX0.eimoL0JlSCxHAnrfl5WwwiOnvJznBxh-FFQYl7NSKFk";
+
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const redefinirSenhaForm = document.getElementById('redefinirSenhaForm');
+        const novaSenhaInput = document.getElementById('novaSenha');
+        const confirmaNovaSenhaInput = document.getElementById('confirmaNovaSenha');
+        const mensagemRedefinicao = document.getElementById('mensagemRedefinicao');
+
+        // Quando a página carrega, o Supabase já deve ter tratado o token
+        // Podemos apenas configurar o evento de submissão do formulário
+        redefinirSenhaForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const novaSenha = novaSenhaInput.value;
+            const confirmaNovaSenha = confirmaNovaSenhaInput.value;
+
+            if (novaSenha !== confirmaNovaSenha) {
+                mensagemRedefinicao.textContent = 'As senhas não coincidem!';
+                mensagemRedefinicao.style.color = 'red';
+                return;
+            }
+
+            if (novaSenha.length < 6) {
+                mensagemRedefinicao.textContent = 'A senha deve ter no mínimo 6 caracteres.';
+                mensagemRedefinicao.style.color = 'red';
+                return;
+            }
+
+            try {
+                // Aqui, o Supabase já terá a sessão do usuário recuperada do token na URL
+                const { data, error } = await supabaseClient.auth.updateUser({
+                    password: novaSenha
+                });
+
+                if (error) {
+                    console.error('Erro ao redefinir a senha:', error.message);
+                    mensagemRedefinicao.textContent = 'Erro ao redefinir a senha: ' + error.message;
+                    mensagemRedefinicao.style.color = 'red';
+                } else {
+                    mensagemRedefinicao.textContent = 'Senha redefinida com sucesso! Você pode agora fazer login com sua nova senha.';
+                    mensagemRedefinicao.style.color = 'green';
+                    redefinirSenhaForm.reset(); // Limpa o formulário
+                    // Opcional: Redirecionar o usuário para a página de login
+                    setTimeout(() => {
+                        window.location.href = 'index.html'; // Ou sua página de login
+                    }, 3000);
+                }
+            } catch (error) {
+                console.error('Erro inesperado:', error);
+                mensagemRedefinicao.textContent = 'Ocorreu um erro inesperado. Tente novamente mais tarde.';
+                mensagemRedefinicao.style.color = 'red';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -83,20 +83,21 @@
   </div>
 
   <div id="modalLogin" class="modal hidden">
-    <div class="modal-content">
-      <span class="close" id="fecharLogin">&times;</span>
-      <h2>Login</h2>
-      <form id="loginForm">
-        <label for="emailLogin">E-mail:</label>
-        <input type="email" id="emailLogin" required>
+  <div class="modal-content">
+    <span class="close" id="fecharLogin">&times;</span>
+    <h2>Login</h2>
+    <form id="loginForm">
+      <label for="emailLogin">E-mail:</label>
+      <input type="email" id="emailLogin" required>
 
-        <label for="senhaLogin">Senha:</label>
-        <input type="password" id="senhaLogin" required>
+      <label for="senhaLogin">Senha:</label>
+      <input type="password" id="senhaLogin" required>
 
-        <button type="submit">Entrar</button>
-      </form>
-    </div>
+      <button type="submit">Entrar</button>
+      <button type="button" id="esqueceuSenhaBtn" class="link-button">Esqueceu a senha?</button>
+    </form>
   </div>
+</div>
 
   <div id="modalCadastroCliente" class="modal hidden">
     <div class="modal-content">
@@ -135,6 +136,19 @@
     <h2>Mensagens e Histórico de Conversas</h2>
     <div id="historicoConversasContainer" class="historico-list">
       </div>
+  </div>
+</div>
+
+
+<div id="modalRecuperarSenha" class="modal hidden">
+  <div class="modal-content">
+    <span class="close" id="fecharRecuperarSenha">&times;</span>
+    <h2>Recuperar Senha</h2>
+    <form id="recuperarSenhaForm">
+      <label for="emailRecuperarSenha">E-mail:</label>
+      <input type="email" id="emailRecuperarSenha" required>
+      <button type="submit">Enviar Link de Recuperação</button>
+    </form>
   </div>
 </div>
 

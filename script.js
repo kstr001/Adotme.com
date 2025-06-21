@@ -60,6 +60,14 @@ const modalHistorico = document.getElementById("modalHistorico");
 const fecharHistorico = document.getElementById("fecharHistorico");
 const historicoMensagensContainer = document.getElementById("historicoMensagensContainer");
 
+// Botão "Esqueceu a senha?" DENTRO DO MODAL DE LOGIN
+const esqueceuSenhaBtn = document.getElementById('esqueceuSenhaBtn'); // <--- AQUI!
+
+// Referências para o modal de recuperação de senha
+const modalRecuperarSenha = document.getElementById('modalRecuperarSenha');
+const fecharRecuperarSenha = document.getElementById('fecharRecuperarSenha');
+const recuperarSenhaForm = document.getElementById('recuperarSenhaForm');
+const emailRecuperarSenhaInput = document.getElementById('emailRecuperarSenha')
 
 // --- Mapa ---
 const map = L.map('map').setView([-25.4284, -49.2733], 12); // Curitiba, PR
@@ -169,7 +177,83 @@ logoutBtn.addEventListener("click", async () => {
 async function verificarLogin() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     localUsuarioAtual = user;
+    if (loginBtn) {
+    loginBtn.addEventListener('click', () => {
+        if (modalLogin) {
+            modalLogin.classList.remove('hidden');
+        }
+    });
+}
 
+// Fechar modal de login
+if (fecharLogin) {
+    fecharLogin.addEventListener('click', () => {
+        if (modalLogin) {
+            modalLogin.classList.add('hidden');
+        }
+    });
+}
+
+// **EVENT LISTENER PARA O BOTÃO ESQUECEU A SENHA**
+if (esqueceuSenhaBtn) {
+    esqueceuSenhaBtn.addEventListener('click', () => {
+        console.log("Botão 'Esqueceu a senha?' clicado!");
+        if (modalLogin) {
+            modalLogin.classList.add('hidden');
+            modalLogin.classList.remove('active');
+        }
+        if (modalRecuperarSenha) {
+            modalRecuperarSenha.classList.remove('hidden');
+            modalRecuperarSenha.classList.add('active'); // <-- ESSENCIAL
+        }
+    });
+}
+
+
+// Fechar modal de Recuperação de Senha
+fecharRecuperarSenha.addEventListener('click', () => {
+    console.log("Botão 'x' do modal de recuperação clicado.");
+    modalRecuperarSenha.classList.add('hidden');
+    modalRecuperarSenha.classList.remove('active'); // <-- ESSENCIAL para esconder
+});
+
+
+// Fechar modais ao clicar fora
+window.addEventListener('click', (event) => {
+    if (event.target === modalLogin) {
+        modalLogin.classList.add('hidden');
+    }
+    if (event.target === modalRecuperarSenha) {
+        modalRecuperarSenha.classList.add('hidden');
+    }
+  
+});
+if (recuperarSenhaForm) {
+    recuperarSenhaForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const email = emailRecuperarSenhaInput.value;
+
+        try {
+            const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+                redirectTo: window.location.origin + '/nova-senha.html'
+            });
+
+            if (error) {
+                console.error('Erro ao enviar link de recuperação:', error.message);
+                alert('Erro ao enviar link de recuperação. Por favor, verifique o e-mail e tente novamente.');
+            } else {
+                alert('Um link para redefinir sua senha foi enviado para ' + email + '. Por favor, verifique sua caixa de entrada (e spam).');
+                if (modalRecuperarSenha) {
+                    modalRecuperarSenha.classList.add('hidden');
+                }
+                emailRecuperarSenhaInput.value = '';
+            }
+        } catch (error) {
+            console.error('Erro inesperado:', error);
+            alert('Ocorreu um erro inesperado. Tente novamente mais tarde.');
+        }
+    });
+}
     let isAdmin = false;
     // Substitua 'SEU_EMAIL_ADMIN@EXEMPLO.COM' pelo seu email de administrador real
     if (user && user.email === "SEU_EMAIL_ADMIN@EXEMPLO.COM") { // <--- ALERTA: MUDAR ESTE EMAIL!

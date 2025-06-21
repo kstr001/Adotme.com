@@ -189,15 +189,15 @@ footer {
 /* Modals */
 .modal {
     position: fixed;
-    z-index: 1000;
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
+    background-color: rgba(0, 0, 0, 0.7);
     display: flex;
-    justify-content: center;
-    align-items: center;
+    align-items: center; 
+    justify-content: center; 
+    z-index: 1000;
     transition: opacity 0.3s ease, visibility 0.3s ease;
     opacity: 0;
     visibility: hidden;
@@ -481,4 +481,115 @@ footer {
 
 .delete-pet-btn:hover {
     background-color: #c82333;
+}
+
+/* Estilos para o Modal de Recuperação de Senha (reutilizando estilos de modal existentes) */
+#modalRecuperarSenha .modal-content {
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+     z-index: 1000;
+}
+
+#recuperarSenhaForm label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #555;
+}
+
+#recuperarSenhaForm input[type="email"] {
+    width: calc(100% - 20px);
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+#recuperarSenhaForm button[type="submit"] {
+    background-color: #007bff; /* Azul para o botão de enviar */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
+}
+
+#recuperarSenhaForm button[type="submit"]:hover {
+    background-color: #0056b3;
+}
+.container-redefinir {
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 30px;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.container-redefinir h2 {
+    color: #333;
+    margin-bottom: 25px;
+    font-size: 1.8rem;
+}
+
+.container-redefinir label {
+    display: block;
+    text-align: left;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #555;
+}
+
+.container-redefinir input[type="password"] {
+    width: calc(100% - 20px);
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 1rem;
+    box-sizing: border-box; /* Garante que padding não aumente a largura total */
+}
+
+.container-redefinir button[type="submit"] {
+    background-color: #28a745; /* Verde para redefinir */
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: background-color 0.3s ease;
+    width: 100%;
+}
+
+.container-redefinir button[type="submit"]:hover {
+    background-color: #218838;
+}
+
+#mensagemRedefinicao {
+    margin-top: 20px;
+    font-weight: bold;
+}
+.modal:not(.hidden) {
+    display: flex; /* ou block, ou o que você usa para exibir e centralizar */
+    /* Garanta que todos os estilos de posicionamento e visibilidade estejam aqui também,
+       como position: fixed, top, left, width, height, background-color, align-items, justify-content */
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex; /* Para centralizar o conteúdo */
+    align-items: center;
+    justify-content: center;
 }
