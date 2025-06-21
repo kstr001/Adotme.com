@@ -7,8 +7,10 @@ const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let petsArray = []; // Vai armazenar os pets carregados do Supabase
 let localUsuarioAtual = null; // Objeto do usuário Supabase
-const RAIO_FILTRO_KM = 300; // Constante para filtro de raio (se usar no futuro)
+const RAIO_FILTRO_KM = 100; // Constante para filtro de raio (se usar no futuro)
 let currentPetId = null; // Variável global para armazenar o ID do pet do chat ativo
+let userMarker = null;
+let userLocationCoords = { lat: -25.4284, lng: -49.2733 }
 
 // --- Elementos do DOM ---
 const cadastroBtn = document.getElementById("cadastroPetBtn");
@@ -162,39 +164,96 @@ logoutBtn.addEventListener("click", async () => {
 
 // Verifica o estado de login e atualiza a UI
 async function verificarLogin() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    localUsuarioAtual = user;
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    localUsuarioAtual = user;
 
-    let isAdmin = false;
-    // Substitua 'SEU_EMAIL_ADMIN@EXEMPLO.COM' pelo seu email de administrador real
-    if (user && user.email === "SEU_EMAIL_ADMIN@EXEMPLO.COM") { // <--- ALERTA: MUDAR ESTE EMAIL!
-        isAdmin = true;
-        localStorage.setItem("logadoAdmin", "true");
-    } else {
-        localStorage.removeItem("logadoAdmin");
-    }
+    let isAdmin = false;
+    // Substitua 'SEU_EMAIL_ADMIN@EXEMPLO.COM' pelo seu email de administrador real
+    if (user && user.email === "SEU_EMAIL_ADMIN@EXEMPLO.COM") { // <--- ALERTA: MUDAR ESTE EMAIL!
+        isAdmin = true;
+        localStorage.setItem("logadoAdmin", "true");
+    } else {
+        localStorage.removeItem("logadoAdmin");
+    }
 
-    if (user) {
-        document.getElementById("cadastroClienteBtn").style.display = "none";
-        document.getElementById("loginBtn").style.display = "none";
-        document.getElementById("logoutBtn").style.display = "block";
-        document.getElementById("verConversasBtn").style.display = "block"; // Mostrar botão de conversas
+    if (user) {
+        document.getElementById("cadastroClienteBtn").style.display = "none";
+        document.getElementById("loginBtn").style.display = "none";
+        document.getElementById("logoutBtn").style.display = "block";
+        document.getElementById("verConversasBtn").style.display = "block"; // Mostrar botão de conversas
 
-        usuarioLogadoDisplay.textContent = `Olá, ${user.email.split('@')[0]}${isAdmin ? ' (Admin)' : ''}!`;
-        usuarioLogadoDisplay.style.display = "block";
+        usuarioLogadoDisplay.textContent = `Olá, ${user.email.split('@')[0]}${isAdmin ? ' (Admin)' : ''}!`;
+        usuarioLogadoDisplay.style.display = "block";
 
-        // Tornar o botão de cadastro de pet visível para qualquer usuário logado
-        cadastroBtn.style.display = "block";
-    } else {
-        document.getElementById("cadastroClienteBtn").style.display = "block";
-        document.getElementById("loginBtn").style.display = "block";
-        document.getElementById("logoutBtn").style.display = "none";
-        document.getElementById("verConversasBtn").style.display = "none";
-        usuarioLogadoDisplay.style.display = "none";
-        cadastroBtn.style.display = "none"; // Esconde o botão se ninguém estiver logado
-    }
+        // Tornar o botão de cadastro de pet visível para qualquer usuário logado
+        cadastroBtn.style.display = "block";
 
-    renderizarPets();
+        // Obter a localização do usuário e centralizar o mapa
+        obterLocalizacaoUsuario();
+    } else {
+        document.getElementById("cadastroClienteBtn").style.display = "block";
+        document.getElementById("loginBtn").style.display = "block";
+        document.getElementById("logoutBtn").style.display = "none";
+        document.getElementById("verConversasBtn").style.display = "none";
+        usuarioLogadoDisplay.style.display = "none";
+        cadastroBtn.style.display = "none"; // Esconde o botão se ninguém estiver logado
+    }
+
+    renderizarPets();
+}
+
+// Função para obter a localização do usuário e centralizar o mapa
+function obterLocalizacaoUsuario() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+
+                // ATUALIZA A LOCALIZAÇÃO DO USUÁRIO
+                userLocationCoords = { lat: latitude, lng: longitude };
+
+                const userIcon = L.icon({
+                    iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                });
+
+                map.setView([latitude, longitude], 13);
+
+                if (userMarker) {
+                    userMarker.remove();
+                }
+
+                userMarker = L.marker([latitude, longitude], { icon: userIcon }).addTo(map)
+                    .bindPopup("Você está aqui!")
+                    .openPopup();
+
+                // Após obter a localização, renderize os pets (agora com filtro)
+                renderizarPets();
+            },
+            function(error) {
+                console.error("Erro ao obter a localização:", error);
+                alert("Não foi possível obter sua localização. O mapa será centralizado em Curitiba.");
+                // Mantém a localização padrão de Curitiba em userLocationCoords
+                map.setView([-25.4284, -49.2733], 12);
+                L.marker([-25.4284, -49.2733]).addTo(map).bindPopup("Curitiba (Localização padrão)").openPopup();
+                // Renderiza os pets mesmo sem a localização do usuário (eles não serão filtrados por raio)
+                renderizarPets();
+            }
+        );
+    } else {
+        console.error("Geolocalização não suportada neste navegador.");
+        alert("Geolocalização não suportada. O mapa será centralizado em Curitiba.");
+        // Mantém a localização padrão de Curitiba em userLocationCoords
+        map.setView([-25.4284, -49.2733], 12);
+        L.marker([-25.4284, -49.2733]).addTo(map).bindPopup("Curitiba (Localização padrão)").openPopup();
+        // Renderiza os pets mesmo sem a localização do usuário (eles não serão filtrados por raio)
+        renderizarPets();
+    }
 }
 
 // --- Funções de Pets ---
@@ -341,77 +400,108 @@ async function buscarEnderecoPorCEP(cep) {
     }
 }
 
+function calcularDistancia(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Raio da Terra em quilômetros
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distancia = R * c; // Distância em km
+    return distancia;
+}
 
 async function renderizarPets() {
-    const petsListContainer = document.getElementById("listaPetsContainer");
-    if (!petsListContainer) {
-        console.error("Elemento 'listaPetsContainer' não encontrado.");
-        return;
-    }
-    petsListContainer.innerHTML = '';
+    const petsListContainer = document.getElementById("listaPetsContainer");
+    if (!petsListContainer) {
+        console.error("Elemento 'listaPetsContainer' não encontrado.");
+        return;
+    }
+    petsListContainer.innerHTML = '';
 
-    console.log("Tentando carregar pets do Supabase...");
-    const { data: pets, error } = await supabaseClient.from("pets").select("*"); // Peguei 'data' como 'pets' diretamente
-    console.log("Resposta da consulta de pets:", { data: pets, error });
+    console.log("Tentando carregar pets do Supabase...");
+    const { data: pets, error } = await supabaseClient.from("pets").select("*");
+    console.log("Resposta da consulta de pets:", { data: pets, error });
 
-    if (error) {
-        console.error("ERRO DETALHADO AO CARREGAR PETS:", error.message, error.details, error.hint, error.code, error);
-        petsListContainer.innerHTML = "<p>Erro ao carregar pets.</p>";
-        return;
-    }
+    if (error) {
+        console.error("ERRO DETALHADO AO CARREGAR PETS:", error.message, error.details, error.hint, error.code, error);
+        petsListContainer.innerHTML = "<p>Erro ao carregar pets.</p>";
+        return;
+    }
 
-    petsArray = pets; // Atualiza o array global de pets
+    // --- Lógica de Filtro por Raio ---
+    let petsFiltrados = [];
+    if (userLocationCoords && userLocationCoords.lat && userLocationCoords.lng) {
+        petsFiltrados = pets.filter(pet => {
+            if (pet.latitude && pet.longitude) {
+                const distancia = calcularDistancia(
+                    userLocationCoords.lat,
+                    userLocationCoords.lng,
+                    pet.latitude,
+                    pet.longitude
+                );
+                return distancia <= RAIO_FILTRO_KM;
+            }
+            return false; // Se o pet não tiver lat/lng, não o inclua no filtro
+        });
+        console.log(`Pets filtrados em ${RAIO_FILTRO_KM}km:`, petsFiltrados.length);
+    } else {
+        // Se a localização do usuário não estiver disponível, exibe todos os pets ou uma mensagem
+        console.log("Localização do usuário não disponível para filtro de raio. Exibindo todos os pets.");
+        petsFiltrados = pets; // Ou você pode decidir não mostrar nenhum se não houver localização
+    }
+    // --- Fim da Lógica de Filtro por Raio ---
 
-    if (pets.length === 0) {
-        petsListContainer.innerHTML = '<p>Nenhum pet disponível para adoção ainda.</p>';
-    } else {
-        pets.forEach(pet => {
-            const petCard = document.createElement('div');
-            petCard.classList.add('pet-card');
-            
+    petsArray = petsFiltrados; // Atualiza o array global de pets com os filtrados
+
+    if (petsFiltrados.length === 0) { // Agora verifica petsFiltrados
+        petsListContainer.innerHTML = '<p>Nenhum pet disponível para adoção dentro de 100km da sua localização ou nenhum pet cadastrado ainda.</p>';
+    } else {
+        petsFiltrados.forEach(pet => { // Itera sobre petsFiltrados
+            const petCard = document.createElement('div');
+            petCard.classList.add('pet-card');
+
             let buttonsHtml = `
                 <button class="iniciar-chat-btn" data-pet-id="${pet.id}" ${localUsuarioAtual && localUsuarioAtual.email === pet.dono_email ? 'disabled' : ''}>${localUsuarioAtual && localUsuarioAtual.email === pet.dono_email ? 'É seu Pet' : 'Interessado?'}</button>
             `;
 
-            // Adiciona o botão de exclusão APENAS se o usuário logado for o dono do pet
             if (localUsuarioAtual && localUsuarioAtual.email === pet.dono_email) {
                 buttonsHtml += `<button class="delete-pet-btn" data-pet-id="${pet.id}">Excluir Pet</button>`;
             }
 
-            petCard.innerHTML = `
-                <img src="${pet.foto_url || 'placeholder.jpg'}" alt="${pet.nome}">
-                <h4>${pet.nome}</h4>
-                <p>Espécie: ${pet.especie}</p>
-                <p>Idade: ${pet.idade} anos</p>
-                <p>Localização: ${pet.localizacao}</p>
-                <p>${pet.descricao}</p>
+            petCard.innerHTML = `
+                <img src="${pet.foto_url || 'placeholder.jpg'}" alt="${pet.nome}">
+                <h4>${pet.nome}</h4>
+                <p>Espécie: ${pet.especie}</p>
+                <p>Idade: ${pet.idade} anos</p>
+                <p>Localização: ${pet.localizacao}</p>
+                <p>${pet.descricao}</p>
                 <div class="pet-card-buttons">
                     ${buttonsHtml}
                 </div>
-            `;
-            petsListContainer.appendChild(petCard);
-        });
-    }
+            `;
+            petsListContainer.appendChild(petCard);
+        });
+    }
 
-    // Adicionar event listeners para os botões de chat
-    document.querySelectorAll('.iniciar-chat-btn').forEach(button => {
-        button.addEventListener('click', async (event) => {
-            if (!localUsuarioAtual) {
-                alert("Você precisa estar logado para iniciar uma conversa.");
-                modalLogin.classList.remove("hidden");
-                modalLogin.classList.add("active");
-                return;
-            }
-            currentPetId = event.target.dataset.petId;
-            // Carregar mensagens existentes para este pet
-            await carregarMensagens(currentPetId);
-            chatPetNome.textContent = `Chat com ${petsArray.find(p => p.id == currentPetId).nome}`;
-            modalChat.classList.remove("hidden");
-            modalChat.classList.add("active");
-        });
-    });
+    document.querySelectorAll('.iniciar-chat-btn').forEach(button => {
+        button.addEventListener('click', async (event) => {
+            if (!localUsuarioAtual) {
+                alert("Você precisa estar logado para iniciar uma conversa.");
+                modalLogin.classList.remove("hidden");
+                modalLogin.classList.add("active");
+                return;
+            }
+            currentPetId = event.target.dataset.petId;
+            await carregarMensagens(currentPetId);
+            chatPetNome.textContent = `Chat com ${petsArray.find(p => p.id == currentPetId).nome}`;
+            modalChat.classList.remove("hidden");
+            modalChat.classList.add("active");
+        });
+    });
 
-    // Adicionar event listeners para os botões de exclusão
     document.querySelectorAll('.delete-pet-btn').forEach(button => {
         button.addEventListener('click', async (event) => {
             const petIdToDelete = event.target.dataset.petId;
@@ -421,7 +511,7 @@ async function renderizarPets() {
         });
     });
 
-    renderizarPetsNoMapa(pets); // Atualiza os marcadores no mapa
+    renderizarPetsNoMapa(petsFiltrados); // Atualiza os marcadores no mapa com os pets filtrados
 }
 
 // Renderiza pets no mapa
