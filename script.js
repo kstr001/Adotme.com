@@ -454,9 +454,10 @@ async function renderizarPets() {
     }
     // --- Fim da Lógica de Filtro por Raio ---
 
-    petsArray = petsFiltrados; // Atualiza o array global de pets com os filtrados
+    // CORREÇÃO AQUI: Garante que petsArray sempre tenha os pets filtrados
+    petsArray = petsFiltrados; 
 
-    if (petsFiltrados.length === 0) { // Agora verifica petsFiltrados
+    if (petsFiltrados.length === 0) {
         petsListContainer.innerHTML = '<p>Nenhum pet disponível para adoção dentro de 100km da sua localização ou nenhum pet cadastrado ainda.</p>';
     } else {
         petsFiltrados.forEach(pet => { // Itera sobre petsFiltrados
@@ -486,6 +487,7 @@ async function renderizarPets() {
         });
     }
 
+    // Adicionar event listeners para os botões de chat (código existente...)
     document.querySelectorAll('.iniciar-chat-btn').forEach(button => {
         button.addEventListener('click', async (event) => {
             if (!localUsuarioAtual) {
@@ -495,13 +497,17 @@ async function renderizarPets() {
                 return;
             }
             currentPetId = event.target.dataset.petId;
+            // Carregar mensagens existentes para este pet
             await carregarMensagens(currentPetId);
-            chatPetNome.textContent = `Chat com ${petsArray.find(p => p.id == currentPetId).nome}`;
+            // Certifica-se de encontrar o pet correto no petsArray atualizado
+            const selectedPet = petsArray.find(p => p.id == currentPetId);
+            chatPetNome.textContent = `Chat com ${selectedPet ? selectedPet.nome : 'Pet Desconhecido'}`;
             modalChat.classList.remove("hidden");
             modalChat.classList.add("active");
         });
     });
 
+    // Adicionar event listeners para os botões de exclusão (código existente...)
     document.querySelectorAll('.delete-pet-btn').forEach(button => {
         button.addEventListener('click', async (event) => {
             const petIdToDelete = event.target.dataset.petId;
@@ -511,7 +517,8 @@ async function renderizarPets() {
         });
     });
 
-    renderizarPetsNoMapa(petsFiltrados); // Atualiza os marcadores no mapa com os pets filtrados
+    // CORREÇÃO AQUI: Passa apenas os pets filtrados para renderizar no mapa
+    renderizarPetsNoMapa(petsFiltrados);
 }
 
 // Renderiza pets no mapa
