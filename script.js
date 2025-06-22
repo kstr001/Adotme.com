@@ -204,7 +204,7 @@ if (esqueceuSenhaBtn) {
         }
         if (modalRecuperarSenha) {
             modalRecuperarSenha.classList.remove('hidden');
-            modalRecuperarSenha.classList.add('active'); // <-- ESSENCIAL
+            modalRecuperarSenha.classList.add('active'); 
         }
     });
 }
@@ -214,7 +214,7 @@ if (esqueceuSenhaBtn) {
 fecharRecuperarSenha.addEventListener('click', () => {
     console.log("Botão 'x' do modal de recuperação clicado.");
     modalRecuperarSenha.classList.add('hidden');
-    modalRecuperarSenha.classList.remove('active'); // <-- ESSENCIAL para esconder
+    modalRecuperarSenha.classList.remove('active'); 
 });
 
 
@@ -256,8 +256,8 @@ if (recuperarSenhaForm) {
     });
 }
     let isAdmin = false;
-    // Substitua 'SEU_EMAIL_ADMIN@EXEMPLO.COM' pelo seu email de administrador real
-    if (user && user.email === "SEU_EMAIL_ADMIN@EXEMPLO.COM") { // <--- ALERTA: MUDAR ESTE EMAIL!
+  
+    if (user && user.email === "adimnpetadote@mailinator.com") { 
         isAdmin = true;
         localStorage.setItem("logadoAdmin", "true");
     } else {
@@ -351,7 +351,7 @@ petForm.addEventListener("submit", async (e) => {
     const idade = parseInt(petIdade.value);
     const descricao = petDescricao.value;
     const cep = petCEP.value;
-    const numero = petNumero.value; // NOVO: Captura o número
+    const numero = petNumero.value; 
 
     if (!localUsuarioAtual) {
         alert("Você precisa estar logado para cadastrar um pet.");
@@ -536,17 +536,17 @@ async function renderizarPets() {
     } else {
         // Se a localização do usuário não estiver disponível, exibe todos os pets ou uma mensagem
         console.log("Localização do usuário não disponível para filtro de raio. Exibindo todos os pets.");
-        petsFiltrados = pets; // Ou você pode decidir não mostrar nenhum se não houver localização
+        petsFiltrados = pets; 
     }
     // --- Fim da Lógica de Filtro por Raio ---
 
-    // CORREÇÃO AQUI: Garante que petsArray sempre tenha os pets filtrados
+   
     petsArray = petsFiltrados; 
 
     if (petsFiltrados.length === 0) {
         petsListContainer.innerHTML = '<p>Nenhum pet disponível para adoção dentro de 100km da sua localização ou nenhum pet cadastrado ainda.</p>';
     } else {
-        petsFiltrados.forEach(pet => { // Itera sobre petsFiltrados
+        petsFiltrados.forEach(pet => { 
             const petCard = document.createElement('div');
             petCard.classList.add('pet-card');
 
@@ -573,7 +573,7 @@ async function renderizarPets() {
         });
     }
 
-    // Adicionar event listeners para os botões de chat (código existente...)
+    
     document.querySelectorAll('.iniciar-chat-btn').forEach(button => {
     button.addEventListener('click', async (event) => {
         if (!localUsuarioAtual) {
@@ -597,7 +597,7 @@ async function renderizarPets() {
 
         chatPetNome.textContent = `Chat com ${pet.nome}`;
         
-        // Agora, carregar mensagens específicas para ESTA conversa
+       
         await carregarMensagens(currentChatPetId, currentChatDonoEmail, currentChatInteressadoEmail);
 
         modalChat.classList.remove("hidden");
@@ -605,7 +605,7 @@ async function renderizarPets() {
     });
 });
 
-    // Adicionar event listeners para os botões de exclusão (código existente...)
+   
     document.querySelectorAll('.delete-pet-btn').forEach(button => {
         button.addEventListener('click', async (event) => {
             const petIdToDelete = event.target.dataset.petId;
@@ -615,7 +615,7 @@ async function renderizarPets() {
         });
     });
 
-    // CORREÇÃO AQUI: Passa apenas os pets filtrados para renderizar no mapa
+  
     renderizarPetsNoMapa(petsFiltrados);
 }
 
@@ -650,7 +650,7 @@ async function obterCoordenadasDaLocalizacao(localizacao) {
     } catch (error) {
         console.error("Erro ao obter coordenadas:", error);
     }
-    // Retorna coordenadas padrão se a localização não for encontrada (ex: Curitiba)
+  
     return { lat: -25.4284, lng: -49.2733 };
 }
 
@@ -681,14 +681,14 @@ sendMessageBtn.addEventListener('click', async () => {
 
     const { error } = await supabaseClient.from('mensagens_chat').insert({
         pet_id: currentChatPetId,
-        remetente_email: localUsuarioAtual.email, // <--- ESTE CAMPO É CRÍTICO
+        remetente_email: localUsuarioAtual.email, 
         mensagem: messageText,
         dono_email: currentChatDonoEmail,
         interessado_email: currentChatInteressadoEmail
     });
 
     if (error) {
-        console.error("Erro ao enviar mensagem:", error); // Você já tem este console.error, ótimo.
+        console.error("Erro ao enviar mensagem:", error); 
     } else {
         chatMessageInput.value = '';
         // A recarga via tempo real deve funcionar se o RLS permitir.
@@ -852,7 +852,7 @@ verConversasBtn.addEventListener("click", async () => {
         const historicoMensagensContainer = document.getElementById("historicoMensagensContainer");
 
         const usuarioLogadoEmail = localUsuarioAtual.email;
-        const isAdmin = (usuarioLogadoEmail === "SEU_EMAIL_ADMIN@EXEMPLO.COM"); // Verificação de admin (ALERTA: MUDAR ESTE EMAIL!)
+        const isAdmin = (usuarioLogadoEmail === "adimnpetadote@mailinator.com"); 
 
         // 1. Buscar pet_ids das mensagens onde o usuário logado é o remetente OU destinatário
         const { data: mensagensDoUsuario, error: mensagensError } = await supabaseClient
@@ -1031,10 +1031,6 @@ async function excluirPet(petId) {
         // Se a foto_url foi obtida, exclua-a do Supabase Storage
         if (petData && petData.foto_url) {
             const filePath = petData.foto_url.split('/').pop(); // Extrai o nome do arquivo do URL
-            // Precisamos do caminho completo dentro do bucket.
-            // Se o filePath inclui o ID do usuário (como em `${userId}/${Date.now()}-${fotoFile.name}`),
-            // então você precisaria reconstruir esse caminho ou garantir que a URL pública seja o caminho completo do arquivo.
-            // Para simplicidade, assumindo que `filePath` é o caminho dentro do bucket 'pet-fotos'
             const { error: deleteStorageError } = await supabaseClient.storage
                 .from('pet-fotos')
                 .remove([`${localUsuarioAtual.id}/${filePath}`]); // Ajuste para o caminho real do seu storage
@@ -1066,7 +1062,7 @@ async function excluirPet(petId) {
 
 async function carregarHistoricoConversas() {
     const historicoConversasContainer = document.getElementById("historicoConversasContainer");
-    console.log("Valor de historicoConversasContainer:", historicoConversasContainer); // ADICIONE ESTA LINHA
+    console.log("Valor de historicoConversasContainer:", historicoConversasContainer); 
     if (!historicoConversasContainer) {
         console.error("Elemento 'historicoConversasContainer' não encontrado.");
         return;
@@ -1107,10 +1103,10 @@ async function carregarHistoricoConversas() {
         let conversationKey;
         let participantEmail;
 
-        if (userEmail === msg.dono_email) { // Logged-in user is the pet owner for this message
+        if (userEmail === msg.dono_email) { 
             conversationKey = `${msg.pet_id}-${msg.interessado_email}`;
             participantEmail = msg.interessado_email;
-        } else { // Logged-in user is an interested party for this message
+        } else { 
             conversationKey = `${msg.pet_id}-${msg.dono_email}`;
             participantEmail = msg.dono_email;
         }
@@ -1120,7 +1116,7 @@ async function carregarHistoricoConversas() {
                 pet_id: msg.pet_id,
                 dono_email: msg.dono_email,
                 interessado_email: msg.interessado_email,
-                other_participant_email: participantEmail, // <-- Isso aqui é importante!
+                other_participant_email: participantEmail, 
                 last_message: msg,
                 messages: []
             };
@@ -1229,11 +1225,9 @@ supabaseClient
         ) {
             carregarMensagens(currentChatPetId, currentChatDonoEmail, currentChatInteressadoEmail);
         } else if (localUsuarioAtual && newMessage) {
-            // Lógica para notificação ou atualização do histórico de conversas
-            // se o modal do histórico estiver aberto e a mensagem for relevante para o usuário logado
+
             if (modalHistorico.classList.contains("active")) {
-                // Você precisará de uma função para recarregar o histórico de conversas aqui
-                // por exemplo, carregarHistoricoConversas();
+                
                 carregarHistoricoConversas(); // Adicione essa função
             }
         }
