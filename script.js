@@ -1233,3 +1233,5 @@ supabaseClient
         }
     })
     .subscribe();
+
+    // lembrar de arruamr mensagens 
