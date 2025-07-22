@@ -1,4 +1,4 @@
-const SUPABASE_URL = "https://ymfmlqzwnzmtuvuhavbt.supabase.co"; // SUBSTITUA PELA SUA PROJECT URL DO SUPABASE
+const SUPABASE_URL = "https://ymfmlqzwnzmtuvuhavbt.supabase.co"; 
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZm1scXp3bnptdHV2dWhhdmJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4OTM4ODksImV4cCI6MjA2NTQ2OTg4OX0.eimoL0JlSCxHAnrfl5WwwiOnvJznBxh-FFQYl7NSKFk";
 
 // --- Inicialização do Supabase Client ---
@@ -155,7 +155,7 @@ cadastroClienteForm.addEventListener("submit", async (e) => {
         alert("Erro no cadastro: " + error.message);
         console.error("Erro no cadastro:", error.message);
     } else {
-        alert("Cadastro realizado com sucesso! Verifique seu e-mail para confirmar a conta.");
+        alert("Cadastro realizado com sucesso!");
         modalCadastroCliente.classList.remove("active");
         modalCadastroCliente.classList.add("hidden");
         cadastroClienteForm.reset();
