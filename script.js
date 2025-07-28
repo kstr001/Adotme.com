@@ -5,6 +5,12 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const { createClient } = supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+if ("Notification" in window && Notification.permission !== "granted") {
+    Notification.requestPermission().then(permission => {
+        console.log("Permissão para notificações:", permission);
+    });
+}
+
 let petsArray = []; // Vai armazenar os pets carregados do Supabase
 let localUsuarioAtual = null; // Objeto do usuário Supabase
 const RAIO_FILTRO_KM = 100; // Constante para filtro de raio (se usar no futuro)
@@ -485,6 +491,43 @@ async function buscarEnderecoPorCEP(cep) {
         enderecoCompletoViaCEP = null;
     }
 }
+function iniciarNotificacaoTempoReal() {
+    if (!localUsuarioAtual) return;
+
+    supabaseClient
+        .channel('mensagens_chat_channel')
+        .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'mensagens_chat'
+        }, (payload) => {
+            const novaMensagem = payload.new;
+            const souRemetente = novaMensagem.remetente_email === localUsuarioAtual.email;
+            const souDestinatario = novaMensagem.dono_email === localUsuarioAtual.email || novaMensagem.interessado_email === localUsuarioAtual.email;
+
+            if (!souRemetente && souDestinatario) {
+                notificarNovaMensagem(novaMensagem);
+            }
+        })
+        .subscribe();
+}
+
+
+function notificarNovaMensagem(msg) {
+    console.log("📬 Nova mensagem recebida:", msg);
+
+    const btn = document.getElementById("verConversasBtn");
+    if (btn) {
+        btn.classList.add("piscando");
+        btn.innerText = "🔔 Novas mensagens!";
+    }
+
+    if (Notification.permission === "granted") {
+        new Notification("Nova mensagem recebida", {
+            body: `De: ${msg.remetente_email.split('@')[0]}`,
+        });
+    }
+}
 
 function calcularDistancia(lat1, lon1, lat2, lon2) {
     const R = 6371; // Raio da Terra em quilômetros
@@ -691,7 +734,14 @@ sendMessageBtn.addEventListener('click', async () => {
         console.error("Erro ao enviar mensagem:", error); 
     } else {
         chatMessageInput.value = '';
-        // A recarga via tempo real deve funcionar se o RLS permitir.
+        await carregarMensagens(currentChatPetId, currentChatDonoEmail, currentChatInteressadoEmail);
+    }
+});
+
+chatMessageInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        sendMessageBtn.click(); // Simula o clique no botão
     }
 });
 
@@ -800,43 +850,39 @@ async function carregarMensagens(petId, donoEmail, interessadoEmail) {
     }
 
     messages.forEach(msg => {
-        const messageDiv = document.createElement('div');
-        const isMe = msg.remetente_email === (localUsuarioAtual ? localUsuarioAtual.email : null); // Adicionado verificação para localUsuarioAtual
-        messageDiv.classList.add('chat-message', isMe ? 'sent' : 'received');
+    const isMe = msg.remetente_email === (localUsuarioAtual ? localUsuarioAtual.email : null);
 
-        console.log("--- Mensagem Individual ---");
-        console.log("msg.remetente_email:", msg.remetente_email);
-        console.log("isMe (deveria ser true se eu enviei):", isMe);
-        console.log("Classes aplicadas:", messageDiv.classList);
+    const messageWrapper = document.createElement('div');
+    messageWrapper.classList.add('message', isMe ? 'sent' : 'received');
 
+    const bubble = document.createElement('div');
+    bubble.classList.add('message-bubble');
 
-        // Formato da data/hora
-        const date = new Date(msg.created_at);
-        const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const date = new Date(msg.created_at);
+    const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-        // Identificação do remetente
-        let remetenteDisplay; // Não precisa pré-definir com split('@')[0]
-
-        if (isMe) {
-        remetenteDisplay = "Você"; // Se a mensagem é do usuário logado
+    let remetenteDisplay;
+    if (isMe) {
+        remetenteDisplay = "Você";
+    } else {
+        if (msg.remetente_email === donoEmail) {
+            remetenteDisplay = "Tutor";
+        } else if (msg.remetente_email === interessadoEmail) {
+            remetenteDisplay = "Cliente";
         } else {
-            // Se a mensagem não é do usuário logado, identifique o outro participante
-            if (msg.remetente_email === donoEmail) {
-                remetenteDisplay = "Tutor";
-            } else if (msg.remetente_email === interessadoEmail) {
-                remetenteDisplay = "Cliente";
-            } else {
-                // Fallback caso não seja nem dono nem interessado (improvável com a RLS)
-                remetenteDisplay = msg.remetente_email.split('@')[0];
+            remetenteDisplay = msg.remetente_email.split('@')[0];
         }
     }
 
-    messageDiv.innerHTML = `
+    bubble.innerHTML = `
         <strong>${remetenteDisplay}</strong>: ${msg.mensagem}
         <span class="timestamp">${timeString}</span>
     `;
-    chatMessagesContainer.appendChild(messageDiv);
-});
+
+    messageWrapper.appendChild(bubble);
+    chatMessagesContainer.appendChild(messageWrapper);
+    });
+
      console.log("------------------------------------------------------------");
     chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
 }
@@ -1200,6 +1246,7 @@ document.getElementById("fecharHistorico").addEventListener('click', () => {
 // 1. Verificar login (para ajustar UI)
 // 2. Assinar mudanças em tempo real (para pets e mensagens)
 verificarLogin();
+iniciarNotificacaoTempoReal();
 
 // Assina mudanças na tabela 'pets' em tempo real
 supabaseClient

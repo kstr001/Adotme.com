@@ -608,3 +608,13 @@ footer {
     color: #0056b3;
     text-decoration: none;
 }
+.piscando {
+    animation: piscar 1s infinite;
+    background-color: #ffc107 !important;
+    color: #000 !important;
+}
+@keyframes piscar {
+    0%, 100% { background-color: #ffc107; }
+    50% { background-color: #ffe08a; }
+}
+
