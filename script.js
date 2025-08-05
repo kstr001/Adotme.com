@@ -663,7 +663,7 @@ async function renderizarPets() {
         currentChatDonoEmail = pet.dono_email;
         currentChatInteressadoEmail = localUsuarioAtual.email; // O usuário logado é o interessado
 
-        chatPetNome.textContent = `Chat com ${pet.nome}`;
+        chatPetNome.textContent = `Chat do pet: ${pet.nome}`;
         
        
         await carregarMensagens(currentChatPetId, currentChatDonoEmail, currentChatInteressadoEmail);
