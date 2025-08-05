@@ -183,6 +183,7 @@ logoutBtn.addEventListener("click", async () => {
 async function verificarLogin() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     localUsuarioAtual = user;
+    iniciarNotificacaoTempoReal();
     if (loginBtn) {
     loginBtn.addEventListener('click', () => {
         if (modalLogin) {
@@ -492,7 +493,12 @@ async function buscarEnderecoPorCEP(cep) {
     }
 }
 function iniciarNotificacaoTempoReal() {
-    if (!localUsuarioAtual) return;
+    if (!localUsuarioAtual) {
+        console.warn("⛔ localUsuarioAtual não definido ainda");
+        return;
+    }
+
+    console.log("🟢 Iniciando canal Realtime...");
 
     supabaseClient
         .channel('mensagens_chat_channel')
@@ -500,17 +506,36 @@ function iniciarNotificacaoTempoReal() {
             event: 'INSERT',
             schema: 'public',
             table: 'mensagens_chat'
-        }, (payload) => {
+        }, async (payload) => {
+            console.log("📡 Realtime payload RECEBIDO:", payload.new);
+
             const novaMensagem = payload.new;
             const souRemetente = novaMensagem.remetente_email === localUsuarioAtual.email;
             const souDestinatario = novaMensagem.dono_email === localUsuarioAtual.email || novaMensagem.interessado_email === localUsuarioAtual.email;
 
             if (!souRemetente && souDestinatario) {
-                notificarNovaMensagem(novaMensagem);
+                const mesmoChat = (
+                    currentChatPetId === novaMensagem.pet_id &&
+                    currentChatDonoEmail === novaMensagem.dono_email &&
+                    currentChatInteressadoEmail === novaMensagem.interessado_email
+                );
+
+                if (mesmoChat) {
+                    console.log("🔄 Atualizando chat automaticamente...");
+                    await carregarMensagens(currentChatPetId, currentChatDonoEmail, currentChatInteressadoEmail);
+                } else {
+                    console.log("🔔 Notificando fora do chat ativo");
+                    notificarNovaMensagem(novaMensagem);
+                }
+            } else {
+                console.log("❌ Ignorado: não sou destinatário dessa mensagem");
             }
         })
-        .subscribe();
+        .subscribe((status) => {
+            console.log("📶 Canal Realtime status:", status);
+        });
 }
+
 
 
 function notificarNovaMensagem(msg) {
@@ -1246,7 +1271,6 @@ document.getElementById("fecharHistorico").addEventListener('click', () => {
 // 1. Verificar login (para ajustar UI)
 // 2. Assinar mudanças em tempo real (para pets e mensagens)
 verificarLogin();
-iniciarNotificacaoTempoReal();
 
 // Assina mudanças na tabela 'pets' em tempo real
 supabaseClient
