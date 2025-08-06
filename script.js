@@ -458,7 +458,6 @@ petCEP.addEventListener('blur', async () => {
     }
 });
 
-// Opcional: formata o CEP enquanto digita
 petCEP.addEventListener('input', (e) => {
     let value = e.target.value.replace(/\D/g, ''); // Remove tudo que não é dígito
     if (value.length > 5) {
@@ -507,7 +506,7 @@ function iniciarNotificacaoTempoReal() {
             schema: 'public',
             table: 'mensagens_chat'
         }, async (payload) => {
-            console.log("📡 Realtime payload RECEBIDO:", payload.new);
+            console.log(" Realtime payload RECEBIDO:", payload.new);
 
             const novaMensagem = payload.new;
             const souRemetente = novaMensagem.remetente_email === localUsuarioAtual.email;
@@ -521,25 +520,25 @@ function iniciarNotificacaoTempoReal() {
                 );
 
                 if (mesmoChat) {
-                    console.log("🔄 Atualizando chat automaticamente...");
+                    console.log(" Atualizando chat automaticamente...");
                     await carregarMensagens(currentChatPetId, currentChatDonoEmail, currentChatInteressadoEmail);
                 } else {
-                    console.log("🔔 Notificando fora do chat ativo");
+                    console.log(" Notificando fora do chat ativo");
                     notificarNovaMensagem(novaMensagem);
                 }
             } else {
-                console.log("❌ Ignorado: não sou destinatário dessa mensagem");
+                console.log(" Ignorado: não sou destinatário dessa mensagem");
             }
         })
         .subscribe((status) => {
-            console.log("📶 Canal Realtime status:", status);
+            console.log(" Canal Realtime status:", status);
         });
 }
 
 
 
 function notificarNovaMensagem(msg) {
-    console.log("📬 Nova mensagem recebida:", msg);
+    console.log(" Nova mensagem recebida:", msg);
 
     const btn = document.getElementById("verConversasBtn");
     if (btn) {
@@ -805,12 +804,6 @@ async function enviarMensagem() {
         if (ultimasMensagens && ultimasMensagens.length > 0) {
             destinatarioEmail = ultimasMensagens[0].remetente_email;
         } else {
-             // Caso não haja mensagens prévias de interessados, e o dono está iniciando
-             // uma conversa com "alguém", ou seja, não tem um "destinatário" claro ainda.
-             // Isso pode ser um problema de UX ou um caso de uso que precisa ser pensado.
-             // Por enquanto, vamos assumir que ele está tentando responder a alguém.
-             // Se este caso de 'destinatarioEmail' ficar nulo aqui for comum e problemático,
-             // precisaríamos de outra forma de iniciar a conversa do lado do dono.
             console.warn("Dono tentando enviar mensagem sem um destinatário interessado prévio.");
             alert("Não foi possível identificar um destinatário para esta conversa. Tente iniciar a conversa como interessado primeiro.");
             return;
@@ -1066,7 +1059,6 @@ fecharHistorico.addEventListener("click", () => {
 async function excluirPet(petId) {
     try {
         // Excluir mensagens relacionadas ao pet (se a sua tabela `mensagens_chat` não tiver ON DELETE CASCADE configurado para `pet_id`)
-        // Caso contrário, o banco de dados cuidará disso automaticamente.
         const { error: deleteMessagesError } = await supabaseClient
             .from('mensagens_chat')
             .delete()
@@ -1304,5 +1296,3 @@ supabaseClient
         }
     })
     .subscribe();
-
-    // lembrar de arruamr mensagens 
