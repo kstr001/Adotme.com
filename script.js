@@ -1026,7 +1026,7 @@ verConversasBtn.addEventListener("click", async () => {
                                 const targetPetId = e.target.dataset.petId;
                                 // Abre o modal de chat para o pet e carrega as mensagens
                                 currentPetId = targetPetId;
-                                chatPetNome.textContent = `Chat com ${petsArray.find(p => p.id == currentPetId).nome}`;
+                                chatPetNome.textContent = `Chat do pet: ${petsArray.find(p => p.id == currentPetId).nome}`;
                                 carregarMensagens(targetPetId); // Carrega a conversa específica
                                 modalHistorico.classList.add("hidden");
                                 modalHistorico.classList.remove("active");
@@ -1241,7 +1241,7 @@ async function carregarHistoricoConversas() {
             currentChatInteressadoEmail = interessadoEmail;
 
             const pet = petsArray.find(p => p.id == petId);
-            chatPetNome.textContent = `Chat com ${pet ? pet.nome : 'Pet Desconhecido'}`;
+            chatPetNome.textContent = `Chat do pet: ${pet ? pet.nome : 'Pet Desconhecido'}`;
 
             modalHistorico.classList.add("hidden"); // Esconde histórico
             modalHistorico.classList.remove("active");
