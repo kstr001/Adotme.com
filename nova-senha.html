@@ -23,7 +23,7 @@
     </div>
 
     <script>
-        const SUPABASE_URL = "https://ymfmlqzwnzmtuvuhavbt.supabase.co"; // SUBSTITUA PELA SUA PROJECT URL DO SUPABASE
+        const SUPABASE_URL = "https://ymfmlqzwnzmtuvuhavbt.supabase.co"; 
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZm1scXp3bnptdHV2dWhhdmJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4OTM4ODksImV4cCI6MjA2NTQ2OTg4OX0.eimoL0JlSCxHAnrfl5WwwiOnvJznBxh-FFQYl7NSKFk";
 
         const { createClient } = supabase;
@@ -54,7 +54,7 @@
             }
 
             try {
-                // Aqui, o Supabase já terá a sessão do usuário recuperada do token na URL
+              
                 const { data, error } = await supabaseClient.auth.updateUser({
                     password: novaSenha
                 });
@@ -67,9 +67,8 @@
                     mensagemRedefinicao.textContent = 'Senha redefinida com sucesso! Você pode agora fazer login com sua nova senha.';
                     mensagemRedefinicao.style.color = 'green';
                     redefinirSenhaForm.reset(); // Limpa o formulário
-                    // Opcional: Redirecionar o usuário para a página de login
                     setTimeout(() => {
-                        window.location.href = 'index.html'; // Ou sua página de login
+                        window.location.href = 'index.html'; 
                     }, 3000);
                 }
             } catch (error) {
