@@ -832,7 +832,8 @@ async function enviarMensagem() {
 async function carregarMensagens(petId, donoEmail, interessadoEmail) {
     const chatMessagesContainer = document.getElementById("chatMessages");
     chatMessagesContainer.innerHTML = '';
-
+    historicoConversasContainer.innerHTML = "";
+    
     console.log("------------------- Carregando Mensagens -------------------");
     console.log("Usuário Logado (localUsuarioAtual.email):", localUsuarioAtual ? localUsuarioAtual.email : "N/A");
     console.log("Parâmetros do Chat: Pet ID:", petId, "Dono:", donoEmail, "Interessado:", interessadoEmail);
