@@ -11,6 +11,7 @@ if ("Notification" in window && Notification.permission !== "granted") {
     });
 }
 
+let canalMensagens = null;
 let petsArray = []; // Vai armazenar os pets carregados do Supabase
 let localUsuarioAtual = null; // Objeto do usuário Supabase
 const RAIO_FILTRO_KM = 100; // Constante para filtro de raio (se usar no futuro)
@@ -497,16 +498,21 @@ function iniciarNotificacaoTempoReal() {
         return;
     }
 
+    if (canalMensagens) {
+        console.log("🔁 Canal Realtime já estava ativo, ignorando nova inscrição");
+        return; // evita duplicidade de escuta
+    }
+
     console.log("🟢 Iniciando canal Realtime...");
 
-    supabaseClient
+    canalMensagens = supabaseClient
         .channel('mensagens_chat_channel')
         .on('postgres_changes', {
             event: 'INSERT',
             schema: 'public',
             table: 'mensagens_chat'
         }, async (payload) => {
-            console.log(" Realtime payload RECEBIDO:", payload.new);
+            console.log("📡 Realtime payload RECEBIDO:", payload.new);
 
             const novaMensagem = payload.new;
             const souRemetente = novaMensagem.remetente_email === localUsuarioAtual.email;
@@ -520,20 +526,21 @@ function iniciarNotificacaoTempoReal() {
                 );
 
                 if (mesmoChat) {
-                    console.log(" Atualizando chat automaticamente...");
+                    console.log("🔄 Atualizando chat automaticamente...");
                     await carregarMensagens(currentChatPetId, currentChatDonoEmail, currentChatInteressadoEmail);
                 } else {
-                    console.log(" Notificando fora do chat ativo");
+                    console.log("🔔 Notificando fora do chat ativo");
                     notificarNovaMensagem(novaMensagem);
                 }
             } else {
-                console.log(" Ignorado: não sou destinatário dessa mensagem");
+                console.log("❌ Ignorado: não sou destinatário dessa mensagem");
             }
         })
         .subscribe((status) => {
-            console.log(" Canal Realtime status:", status);
+            console.log("📶 Canal Realtime status:", status);
         });
 }
+
 
 
 
@@ -833,7 +840,7 @@ async function carregarMensagens(petId, donoEmail, interessadoEmail) {
     const chatMessagesContainer = document.getElementById("chatMessages");
     chatMessagesContainer.innerHTML = '';
     historicoConversasContainer.innerHTML = "";
-    
+
     console.log("------------------- Carregando Mensagens -------------------");
     console.log("Usuário Logado (localUsuarioAtual.email):", localUsuarioAtual ? localUsuarioAtual.email : "N/A");
     console.log("Parâmetros do Chat: Pet ID:", petId, "Dono:", donoEmail, "Interessado:", interessadoEmail);
